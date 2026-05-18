@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SEOE Inspector</string>
+    <string name="title_activity_main">SEOE Inspector</string>
+    <string name="package_name">com.seoe.inspector</string>
+    <string name="custom_url_scheme">com.seoe.inspector</string>
+</resources>

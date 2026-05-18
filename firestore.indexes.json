@@ -1,0 +1,149 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "users",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "role", "order": "ASCENDING" },
+                { "fieldPath": "name", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "users",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "email", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "users",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "phone", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "vehicles",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "licensePlate", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "vehicles",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "licensePlate", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "parking_sessions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "startTime", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "parking_sessions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "startTime", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "parking_sessions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "zone", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "startTime", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "parking_sessions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "endTime", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "fines",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "fines",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "inspectorId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "fines",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "notifications",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "read", "order": "ASCENDING" },
+                { "fieldPath": "date", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "transactions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "payments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "inspector_activity",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "inspectorId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "notifications_queue",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "scheduledFor", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "inspections",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "inspectorId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

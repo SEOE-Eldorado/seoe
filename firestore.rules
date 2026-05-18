@@ -1,0 +1,212 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // HELPERS
+    // ============================================
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuth() && getUserData().role == 'admin';
+    }
+
+    function isInspector() {
+      return isAuth() && (getUserData().role == 'inspector' || getUserData().role == 'admin');
+    }
+
+    function isIn(uid, list) {
+      return uid in list;
+    }
+
+    // Field validation helpers
+    function hasFields(data, fields) {
+      return fields.all(f => f in data);
+    }
+
+    function isString(val) {
+      return val is string;
+    }
+
+    function isNumber(val) {
+      return val is number;
+    }
+
+    function isBool(val) {
+      return val is bool;
+    }
+
+    function isTimestamp(val) {
+      return val is timestamp;
+    }
+
+    // Rate limit: max N writes per minute per user
+    function checkRate(limit) {
+      let recent = get(/databases/$(database)/documents/_rate/$(request.auth.uid)).data;
+      return recent == null || recent.count < limit;
+    }
+
+    // ============================================
+    // USERS
+    // ============================================
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isInspector();
+      allow create: if request.auth.uid == userId
+        && request.resource.data.keys().hasAll(['name', 'email'])
+        && request.resource.data.name is string
+        && request.resource.data.email is string;
+      allow update: if isOwner(userId) || isAdmin()
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance'])
+            || isAdmin());
+      allow delete: if isAdmin();
+      allow list: if isInspector();
+    }
+
+    // ============================================
+    // PUBLIC DATA (settings, zones, special days)
+    // ============================================
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /zones/{zoneId} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasAll(['name', 'basePrice', 'pricePerHour'])
+        && request.resource.data.name is string
+        && request.resource.data.basePrice is number
+        && request.resource.data.pricePerHour is number;
+    }
+
+    match /special_days/{dayId} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasAll(['date', 'rate'])
+        && request.resource.data.date is string
+        && request.resource.data.rate is number;
+    }
+
+    // ============================================
+    // VEHICLES
+    // ============================================
+    match /vehicles/{vehicleId} {
+      allow read: if isOwner(resource.data.userId) || isInspector();
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['licensePlate', 'userId'])
+        && request.resource.data.licensePlate is string;
+      allow update: if isOwner(resource.data.userId)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId']));
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // ============================================
+    // PARKING SESSIONS
+    // ============================================
+    match /parking_sessions/{sessionId} {
+      allow read: if isOwner(resource.data.userId) || isInspector();
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId', 'zone', 'startTime', 'endTime', 'status'])
+        && request.resource.data.status == 'active'
+        && request.resource.data.startTime is timestamp
+        && request.resource.data.endTime is timestamp;
+      allow update: if isOwner(resource.data.userId) || isInspector()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endTime', 'status', 'cost', 'extendedAt']);
+      allow delete: if false; // Never delete parking sessions
+    }
+
+    // ============================================
+    // FINES
+    // ============================================
+    match /fines/{fineId} {
+      allow read: if isOwner(resource.data.userId) || isInspector();
+      allow create: if isInspector()
+        && request.resource.data.keys().hasAll(['userId', 'vehiclePlate', 'amount', 'status', 'zone'])
+        && request.resource.data.amount is number
+        && request.resource.data.vehiclePlate is string
+        && request.resource.data.status == 'pending';
+      allow update: if isOwner(resource.data.userId)  // User pays
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt'])
+        || isInspector()                              // Inspector adjusts
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // FINANCIAL
+    // ============================================
+    match /transactions/{transactionId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isOwner(request.resource.data.userId)
+        && request.resource.data.keys().hasAll(['userId', 'type', 'amount']);
+      allow update: if isAdmin(); // Only system marks completed/refunded
+      allow delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuth();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /movements/{movementId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // NOTIFICATIONS
+    // ============================================
+    match /notifications/{notificationId} {
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isAdmin(); // System creates
+      allow update: if isOwner(resource.data.userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /notifications_queue/{notificationId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ============================================
+    // AUDIT & INSPECTOR ACTIVITY
+    // ============================================
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true; // Can be created by system functions
+      allow delete: if false;
+    }
+
+    match /inspector_activity/{activityId} {
+      allow read: if isInspector();
+      allow create: if isInspector()
+        && request.resource.data.keys().hasAll(['inspectorId', 'type', 'timestamp'])
+        && request.resource.data.inspectorId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ============================================
+    // ADMIN FALLBACK
+    // ============================================
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
