@@ -21,9 +21,30 @@ export const userSchema = z.object({
     pushEnabled: z.boolean().default(true),
     reminderTime: z.number().default(15),
   }).optional(),
+  blocked: z.boolean().optional(),
+  createdAt: z.any().optional(),
+  assignedZones: z.array(z.string()).optional(),
+  lastActivity: z.any().optional(),
+  lastLocation: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+  }).optional(),
+  lastPlateCheck: z.string().optional(),
 })
 
 export type User = z.infer<typeof userSchema>
+
+// === Exemption ===
+export const exemptionSchema = z.object({
+  id: z.string(),
+  dni: z.string(),
+  name: z.string(),
+  plate: z.string(),
+  type: z.enum(["disability", "resident"]),
+  exemptedStreets: z.string().optional(),
+  createdAt: z.any(),
+})
+export type Exemption = z.infer<typeof exemptionSchema>
 
 // === Parking Session ===
 export const parkingSessionSchema = z.object({
@@ -57,17 +78,27 @@ export const vehicleSchema = z.object({
 
 export type Vehicle = z.infer<typeof vehicleSchema>
 
-// === Fine ===
+// === Fine (canonical — single source of truth) ===
 export const fineSchema = z.object({
   id: z.string(),
   userId: z.string(),
   vehiclePlate: z.string(),
   amount: z.number(),
-  reason: z.string(),
+  reason: z.string().optional(),
+  description: z.string().optional(),
+  type: z.enum(["overtime", "no_payment", "wrong_zone", "expired_meter"]).optional(),
   location: z.string().default(""),
-  date: z.date(),
-  status: z.enum(["pending", "paid", "contested"]).default("pending"),
-  createdAt: z.date(),
+  date: dateFromTimestamp,
+  status: z.enum(["pending", "paid", "contested", "cancelled"]).default("pending"),
+  createdAt: dateFromTimestamp,
+  dueDate: dateFromTimestamp.optional(),
+  notes: z.string().optional(),
+  inspectorId: z.string().optional(),
+  inspectorName: z.string().optional(),
+  cancelledAt: dateFromTimestamp.optional(),
+  cancelledBy: z.string().optional(),
+  cancelReason: z.string().optional(),
+  paidAt: dateFromTimestamp.optional(),
 })
 
 export type Fine = z.infer<typeof fineSchema>
@@ -111,3 +142,32 @@ export const rechargeSchema = z.object({
 })
 
 export type Recharge = z.infer<typeof rechargeSchema>
+
+// === Transaction (admin payments) ===
+export const transactionSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  userName: z.string(),
+  amount: z.number(),
+  status: z.enum(["completed", "pending", "failed", "refunded"]).default("completed"),
+  method: z.string(),
+  type: z.enum(["credit", "debit"]).optional(),
+  timestamp: z.any(),
+  gatewayResponseCode: z.string().optional(),
+  gatewayMessage: z.string().optional(),
+  externalReference: z.string().optional(),
+  referenceId: z.string().optional(),
+})
+export type Transaction = z.infer<typeof transactionSchema>
+
+// === PaymentSettings (admin) ===
+export const paymentSettingsSchema = z.object({
+  enableMacroClick: z.boolean().default(true),
+  enableCash: z.boolean().default(true),
+  promotions: z.object({
+    active: z.boolean().default(false),
+    minAmount: z.number().default(100),
+    bonusPercentage: z.number().default(10),
+  }).default({ active: false, minAmount: 100, bonusPercentage: 10 }),
+})
+export type PaymentSettings = z.infer<typeof paymentSettingsSchema>

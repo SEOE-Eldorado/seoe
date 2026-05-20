@@ -1,18 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { db } from "@shared/api/firebase"
-import { 
-    collection, 
-    query, 
-    orderBy, 
-    limit, 
-    onSnapshot, 
-    Timestamp, 
-    where,
-    doc,
-    updateDoc
-} from "firebase/firestore"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@shared/ui/atoms/card"
 import { Button } from "@shared/ui/atoms/button"
 import { Badge } from "@shared/ui/atoms/badge"
@@ -38,6 +26,8 @@ import { Switch } from "@shared/ui/atoms/switch"
 import { Input } from "@shared/ui/atoms/input"
 import { Label } from "@shared/ui/atoms/label"
 import { useToast } from "@shared/ui/atoms/use-toast"
+import type { Transaction, PaymentSettings } from "@shared/types"
+import { useAllTransactions, usePaymentSettings, useUpdatePaymentSettings } from "@shared/api/admin-transactions"
 import { 
     BarChart, 
     Bar, 
@@ -50,33 +40,11 @@ import {
     Area
 } from "recharts"
 
-interface Transaction {
-    id: string
-    userId: string
-    userName: string
-    amount: number
-    status: "completed" | "pending" | "failed" | "refunded"
-    method: string
-    timestamp: Timestamp
-    gatewayResponseCode?: string
-    gatewayMessage?: string
-    externalReference?: string
-}
-
-interface PaymentSettings {
-    enableMacroClick: boolean
-    enableCash: boolean
-    promotions: {
-        active: boolean
-        minAmount: number
-        bonusPercentage: number
-    }
-}
-
 export function PaymentGatewayCenter() {
     const { toast } = useToast()
-    const [transactions, setTransactions] = useState<Transaction[]>([])
-    const [loading, setLoading] = useState(true)
+    const { data: transactions = [], isLoading: loading } = useAllTransactions()
+    const { data: settingsData } = usePaymentSettings()
+    const updateSettingsMutation = useUpdatePaymentSettings()
     const [activeTab, setActiveTab] = useState<"monitor" | "reconciliation" | "logs" | "settings">("monitor")
     const [syncingId, setSyncingId] = useState<string | null>(null)
     const [settings, setSettings] = useState<PaymentSettings>({
@@ -85,25 +53,10 @@ export function PaymentGatewayCenter() {
         promotions: { active: false, minAmount: 500, bonusPercentage: 10 }
     })
 
-    // Load recent activity for the dashboard
+    // Sync settings from server when loaded
     useEffect(() => {
-        const q = query(
-            collection(db, "transactions"), 
-            orderBy("timestamp", "desc"), 
-            limit(100)
-        )
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data: Transaction[] = []
-            snapshot.forEach(doc => {
-                data.push({ id: doc.id, ...doc.data() } as Transaction)
-            })
-            setTransactions(data)
-            setLoading(false)
-        })
-
-        return () => unsubscribe()
-    }, [])
+        if (settingsData) setSettings(settingsData)
+    }, [settingsData])
 
     // Logic: Reconciliation (Filtered transactions stuck in pending > 10 mins)
     const pendingTransactions = useMemo(() => {
@@ -163,11 +116,14 @@ export function PaymentGatewayCenter() {
     }
 
     const handleToggleSetting = async (key: keyof PaymentSettings, value: any) => {
-        setSettings(prev => ({ ...prev, [key]: value }))
+        const updated = { ...settings, [key]: value }
+        setSettings(updated)
+        await updateSettingsMutation.mutateAsync({ [key]: value })
         toast({ title: "Configuración Actualizada", description: "Los cambios se han guardado." })
     }
 
     const handleUpdatePromotion = async () => {
+        await updateSettingsMutation.mutateAsync({ promotions: settings.promotions })
         toast({ title: "Promoción Guardada", description: "La promoción de recarga ha sido actualizada." })
     }
 

@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { db } from "@shared/api/firebase"
-import { collection, onSnapshot, doc, addDoc, deleteDoc, updateDoc, query, orderBy, Timestamp } from "firebase/firestore"
+import { useAllExemptions, useCreateExemption, useUpdateExemption, useDeleteExemption } from "@shared/api/admin-exemptions"
 import { Button } from "@shared/ui/atoms/button"
 import { Input } from "@shared/ui/atoms/input"
 import { Badge } from "@shared/ui/atoms/badge"
@@ -30,21 +29,16 @@ import {
     Home
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
+import type { Exemption } from "@shared/types"
 
-export interface Exemption {
-    id: string
-    dni: string
-    name: string
-    plate: string
-    type: "disability" | "resident"
-    exemptedStreets?: string // Comma-separated or straightforward text for streets
-    createdAt: number
-}
+export type { Exemption }
 
 export function ExemptionsManagement() {
     const { toast } = useToast()
-    const [exemptions, setExemptions] = useState<Exemption[]>([])
-    const [loading, setLoading] = useState(true)
+    const { data: exemptions = [], isLoading: loading } = useAllExemptions()
+    const createMutation = useCreateExemption()
+    const updateMutation = useUpdateExemption()
+    const deleteMutation = useDeleteExemption()
     const [searchTerm, setSearchTerm] = useState("")
 
     // View State
@@ -58,20 +52,6 @@ export function ExemptionsManagement() {
     const [plate, setPlate] = useState("")
     const [type, setType] = useState<"disability" | "resident">("disability")
     const [exemptedStreets, setExemptedStreets] = useState("")
-
-    useEffect(() => {
-        const q = query(collection(db, "exemptions"), orderBy("createdAt", "desc"))
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items: Exemption[] = []
-            snapshot.forEach((doc) => {
-                items.push({ id: doc.id, ...doc.data() } as Exemption)
-            })
-            setExemptions(items)
-            setLoading(false)
-        })
-
-        return () => unsubscribe()
-    }, [])
 
     const handleShowForm = (exemption?: Exemption) => {
         if (exemption) {
@@ -114,10 +94,10 @@ export function ExemptionsManagement() {
             }
 
             if (editingExemption) {
-                await updateDoc(doc(db, "exemptions", editingExemption.id), exemptionData)
+                await updateMutation.mutateAsync({ id: editingExemption.id, data: exemptionData })
                 toast({ title: "Actualizado", description: "El registro se ha actualizado correctamente." })
             } else {
-                await addDoc(collection(db, "exemptions"), exemptionData)
+                await createMutation.mutateAsync(exemptionData)
                 toast({ title: "Creado", description: "El registro se ha creado correctamente." })
             }
             setView("list")
@@ -137,7 +117,7 @@ export function ExemptionsManagement() {
         if (!confirm("¿Estás seguro de que quieres eliminar este registro de excepción?")) return
 
         try {
-            await deleteDoc(doc(db, "exemptions", id))
+            await deleteMutation.mutateAsync(id)
             toast({ title: "Eliminado", description: "El registro ha sido eliminado." })
         } catch (error) {
             toast({ title: "Error", description: "No se pudo eliminar.", variant: "destructive" })

@@ -47,7 +47,8 @@ export function FinesPage({ onBack }: FinesPageProps) {
     }
   }
 
-  const getFineTypeLabel = (type: string) => {
+  const getFineTypeLabel = (type?: string) => {
+    if (!type) return "Infracción"
     const labels = {
       overtime: "Exceso de tiempo",
       no_payment: "Sin pago",
@@ -147,7 +148,7 @@ export function FinesPage({ onBack }: FinesPageProps) {
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="flex flex-col gap-1">
                                                     <span className="text-[10px] font-black text-red-600/50 uppercase tracking-widest bg-red-50/50 px-2.5 py-1 rounded-full border border-red-100/30 w-fit">
-                                                        Vence {fine.dueDate.toLocaleDateString("es-AR", { day: '2-digit', month: '2-digit' })}
+                                                        Vence {fine.dueDate?.toLocaleDateString("es-AR", { day: '2-digit', month: '2-digit' }) ?? "—"}
                                                     </span>
                                                     <h4 className="text-xl font-black text-neutral-text tracking-tight mt-1">{getFineTypeLabel(fine.type)}</h4>
                                                 </div>

@@ -314,27 +314,27 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
                                     </div>
                                 </div>
                             )}
-                            {activeTab === "dashboard" && isAdmin && <StatsDashboard />}
+                            {activeTab === "dashboard" && hasPermission('dashboard') && <StatsDashboard />}
 
-                            {activeTab === "users" && isAdmin && <UsersManagement />}
+                            {activeTab === "users" && hasPermission('users') && <UsersManagement />}
 
-                            {activeTab === "exemptions" && isAdmin && <ExemptionsManagement />}
+                            {activeTab === "exemptions" && hasPermission('exemptions') && <ExemptionsManagement />}
 
-                            {activeTab === "inspectors" && isAdmin && <InspectorManagement />}
+                            {activeTab === "inspectors" && hasPermission('inspectors') && <InspectorManagement />}
 
-                            {activeTab === "reports" && isAdmin && <ReportsPanel />}
+                            {activeTab === "reports" && hasPermission('reports') && <ReportsPanel />}
 
-                            {activeTab === "notifications" && isAdmin && <NotificationsSystem />}
+                            {activeTab === "notifications" && hasPermission('notifications') && <NotificationsSystem />}
 
-                            {activeTab === "audit" && isAdmin && hasPermission('audit') && <AuditLogsPanel />}
+                            {activeTab === "audit" && hasPermission('audit') && <AuditLogsPanel />}
 
-                            {activeTab === "payments" && isAdmin && hasPermission('payments') && <PaymentGatewayCenter />}
+                            {activeTab === "payments" && hasPermission('payments') && <PaymentGatewayCenter />}
 
-                            {activeTab === "roles" && isAdmin && (!user?.permissions || user.permissions.length === 0) && <AdminRolesManager />}
+                            {activeTab === "roles" && (!user?.permissions || user.permissions.length === 0) && <AdminRolesManager />}
 
-                            {activeTab === "fines" && isAdmin && hasPermission('fines') && <FinesManagement />}
+                            {activeTab === "fines" && hasPermission('fines') && <FinesManagement />}
 
-                            {activeTab === "special-days" && isAdmin && <SpecialDaysManagement />}
+                            {activeTab === "special-days" && hasPermission('special-days') && <SpecialDaysManagement />}
 
                             {activeTab === "heatmap" && <InspectorHeatmap />}
 
@@ -491,8 +491,8 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
                                 </>
                             )}
 
-                            {activeTab === "config" && isAdmin && <PriceConfig />}
-                            {activeTab === "zones" && isAdmin && <ZoneManagement />}
+                            {activeTab === "config" && hasPermission('config') && <PriceConfig />}
+                            {activeTab === "zones" && hasPermission('zones') && <ZoneManagement />}
                             {activeTab === "history" && (
                                 <div className="flex flex-col items-center justify-center py-20 opacity-40">
                                     <HistoryIcon className="size-16 mb-4" />

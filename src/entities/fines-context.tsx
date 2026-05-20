@@ -6,19 +6,10 @@ import { db } from "@shared/api/firebase"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { collection, query, where, getDocs, doc, updateDoc, addDoc, Timestamp, writeBatch } from "firebase/firestore"
 import { getFunctions, httpsCallable } from "firebase/functions"
+import type { Fine } from "@shared/types"
 
-export interface Fine {
-  id: string
-  userId: string
-  vehiclePlate: string
-  type: "overtime" | "no_payment" | "wrong_zone" | "expired_meter"
-  amount: number
-  description: string
-  location: string
-  date: Date
-  status: "pending" | "paid" | "appealing"
-  dueDate: Date
-}
+// Re-export Fine so existing consumers that import it from here still work
+export type { Fine }
 
 interface FinesContextType {
   fines: Fine[]
@@ -26,7 +17,7 @@ interface FinesContextType {
   appealFine: (id: string) => Promise<void>
   getPendingFines: () => Fine[]
   getTotalPendingAmount: () => number
-  issueFine: (fineData: Omit<Fine, "id" | "status" | "date" | "dueDate">) => Promise<void>
+  issueFine: (fineData: Omit<Fine, "id" | "status" | "date" | "dueDate" | "createdAt" | "cancelledAt" | "cancelledBy" | "cancelReason" | "paidAt" | "notes" | "inspectorId" | "inspectorName">) => Promise<void>
 }
 
 const FinesContext = createContext<FinesContextType | undefined>(undefined)
@@ -50,11 +41,20 @@ export function FinesProvider({ children }: { children: ReactNode }) {
           vehiclePlate: data.vehiclePlate,
           type: data.type,
           amount: data.amount,
-          description: data.description,
-          location: data.location,
-          date: data.date?.toDate() || new Date(),
+          reason: data.reason ?? data.description ?? "",
+          description: data.description ?? data.reason ?? "",
+          location: data.location ?? "",
+          date: data.date?.toDate?.() ?? new Date(),
           status: data.status,
-          dueDate: data.dueDate?.toDate() || new Date(),
+          dueDate: data.dueDate?.toDate?.() ?? undefined,
+          createdAt: data.createdAt?.toDate?.() ?? new Date(),
+          notes: data.notes,
+          inspectorId: data.inspectorId,
+          inspectorName: data.inspectorName,
+          cancelledAt: data.cancelledAt?.toDate?.() ?? undefined,
+          cancelledBy: data.cancelledBy,
+          cancelReason: data.cancelReason,
+          paidAt: data.paidAt?.toDate?.() ?? undefined,
         } as Fine)
       })
       return fetchedFines
@@ -84,13 +84,13 @@ export function FinesProvider({ children }: { children: ReactNode }) {
 
   const appealFineMutation = useMutation({
     mutationFn: async (id: string) => {
-      await updateDoc(doc(db, "fines", id), { status: 'appealing' })
+      await updateDoc(doc(db, "fines", id), { status: 'contested' })
     },
     onSuccess: invalidate,
   })
 
   const issueFineMutation = useMutation({
-    mutationFn: async (fineData: Omit<Fine, "id" | "status" | "date" | "dueDate">) => {
+    mutationFn: async (fineData: Omit<Fine, "id" | "status" | "date" | "dueDate" | "createdAt" | "cancelledAt" | "cancelledBy" | "cancelReason" | "paidAt" | "notes" | "inspectorId" | "inspectorName">) => {
       const now = new Date();
       const dueDate = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
 
@@ -100,10 +100,14 @@ export function FinesProvider({ children }: { children: ReactNode }) {
       const fineRef = doc(collection(db, "fines"));
       batch.set(fineRef, {
         ...fineData,
+        reason: fineData.reason || fineData.description || "",
+        description: fineData.description || fineData.reason || "",
         status: "pending",
         date: Timestamp.fromDate(now),
         dueDate: Timestamp.fromDate(dueDate),
+        createdAt: Timestamp.fromDate(now),
         inspectorId: user?.id,
+        inspectorName: user?.name ?? undefined,
       });
 
       // 2. Create a notification for the affected user so they are alerted immediately
@@ -118,7 +122,7 @@ export function FinesProvider({ children }: { children: ReactNode }) {
         userId: fineData.userId,
         type: "fine",
         title: "⚠️ Multa recibida",
-        message: `Se registró una multa de $${fineData.amount} en ${fineData.location}. Motivo: ${fineTypeLabels[fineData.type] ?? fineData.type}. Vence el ${dueDate.toLocaleDateString("es-AR")}.`,
+        message: `Se registró una multa de $${fineData.amount} en ${fineData.location}. Motivo: ${fineData.type ? fineTypeLabels[fineData.type] : fineData.reason ?? fineData.description ?? ''}. Vence el ${dueDate.toLocaleDateString("es-AR")}.`,
         priority: "high",
         actionUrl: "/fines",
         date: Timestamp.fromDate(now),

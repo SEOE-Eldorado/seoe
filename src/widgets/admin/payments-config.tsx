@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { db } from "@shared/api/firebase"
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, addDoc, Timestamp, where } from "firebase/firestore"
 import { useAuth } from "@entities/auth-context"
 import { logAdminAction } from "@shared/lib/logging"
+import { useAllTransactions, usePaymentSettings, useUpdatePaymentSettings, useRefundTransaction } from "@shared/api/admin-transactions"
 import { Card, CardContent } from "@shared/ui/atoms/card"
 import { Button } from "@shared/ui/atoms/button"
 import { Input } from "@shared/ui/atoms/input"
@@ -23,62 +22,30 @@ import {
  QrCode
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
-
-interface Transaction {
- id: string
- userId: string
- userName: string
- amount: number
- type: "credit" | "debit"
- method: "macro_click" | "cash" | "admin_adjustment" | "promotion"
- status: "completed" | "pending" | "failed" | "refunded"
- timestamp: Timestamp
- referenceId?: string
-}
-
-interface PaymentSettings {
- enableMacroClick: boolean
- enableCash: boolean
- promotions: {
- active: boolean
- minAmount: number
- bonusPercentage: number
- }
-}
+import type { Transaction, PaymentSettings } from "@shared/types"
 
 export function PaymentsConfig() {
  const { user } = useAuth()
  const { toast } = useToast()
- const [transactions, setTransactions] = useState<Transaction[]>([])
+ const { data: transactions = [], isLoading: loading } = useAllTransactions()
+ const { data: settingsData } = usePaymentSettings()
+ const updateSettingsMutation = useUpdatePaymentSettings()
+ const refundMutation = useRefundTransaction()
  const [settings, setSettings] = useState<PaymentSettings>({
  enableMacroClick: true,
  enableCash: true,
  promotions: { active: false, minAmount: 500, bonusPercentage: 10 }
  })
- const [loading, setLoading] = useState(true)
 
- // Load logs & settings
+ // Sync settings from server
  useEffect(() => {
- // 1. Transactions
- const q = query(collection(db, "transactions"), orderBy("timestamp", "desc"), limit(50))
- const unsubTrans = onSnapshot(q, (snapshot) => {
- const data: Transaction[] = []
- snapshot.forEach(doc => {
- data.push({ id: doc.id, ...doc.data() } as Transaction)
- })
- setTransactions(data)
- setLoading(false)
- })
-
- // 2. Settings (mocked for now, but should come from DB)
- // In a real app, you'd fetch this from `settings/payments` doc
-
- return () => unsubTrans()
- }, [])
+ if (settingsData) setSettings(settingsData)
+ }, [settingsData])
 
  const handleToggleSetting = async (key: keyof PaymentSettings, value: any) => {
  // Optimistic update
  setSettings(prev => ({ ...prev, [key]: value }))
+ await updateSettingsMutation.mutateAsync({ [key]: value })
 
  // Log it
  if (user) {
@@ -96,6 +63,7 @@ export function PaymentsConfig() {
  }
 
  const handleUpdatePromotion = async () => {
+ await updateSettingsMutation.mutateAsync({ promotions: settings.promotions })
  if (user) {
  await logAdminAction(
  user.id,
@@ -113,18 +81,10 @@ export function PaymentsConfig() {
  if (!confirm(`¿Estás seguro de reembolsar esta transacción de $${tx.amount}?`)) return
 
  try {
- // 1. Mark transaction as refunded
- await updateDoc(doc(db, "transactions", tx.id), {
- status: "refunded",
- refundedAt: Timestamp.now(),
- refundedBy: user?.id
- })
+    // 1. Refund via mutation
+    await refundMutation.mutateAsync({ txId: tx.id, userId: user?.id || "admin" })
 
- // 2. Adjust user balance (reverse the credit)
- // Note: Ideally this should be a transaction or cloud function to ensure consistency
- const userRef = doc(db, "users", tx.userId)
- // We can't do increment(-amount) easily here without knowing current balance logic fully, 
- // but let's assume a Cloud Function handles the balance update based on transaction status change.
+ // 2. Balance adjustment is handled by Cloud Function on transaction status change
  // For now, we'll just log it.
 
  if (user) {

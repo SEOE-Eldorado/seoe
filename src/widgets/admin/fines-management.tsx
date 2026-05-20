@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { db } from "@shared/api/firebase"
-import { collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp } from "firebase/firestore"
+import { useState, useMemo } from "react"
+import { useAllFines, useCancelFine, useMarkFinePaid } from "@shared/api/admin-fines"
 import { Card, CardContent } from "@shared/ui/atoms/card"
 import { Button } from "@shared/ui/atoms/button"
 import { Input } from "@shared/ui/atoms/input"
@@ -44,23 +43,7 @@ import {
     AlertCircle
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
-
-interface Fine {
-    id: string
-    plate: string
-    amount: number
-    reason: string
-    issuedAt: Timestamp
-    inspectorId: string
-    inspectorName: string
-    status: "pending" | "paid" | "cancelled"
-    location?: { latitude: number; longitude: number }
-    userId?: string
-    cancelledAt?: Timestamp
-    cancelledBy?: string
-    cancelReason?: string
-    paidAt?: Timestamp
-}
+import type { Fine } from "@shared/types"
 
 interface InspectorStats {
     id: string
@@ -71,8 +54,9 @@ interface InspectorStats {
 
 export function FinesManagement() {
     const { toast } = useToast()
-    const [fines, setFines] = useState<Fine[]>([])
-    const [loading, setLoading] = useState(true)
+    const { data: fines = [], isLoading: loading } = useAllFines()
+    const cancelFineMutation = useCancelFine()
+    const markPaidMutation = useMarkFinePaid()
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("")
@@ -88,24 +72,6 @@ export function FinesManagement() {
 
     // Stats view
     const [showStats, setShowStats] = useState(false)
-
-    useEffect(() => {
-        const finesQuery = query(
-            collection(db, "fines"),
-            orderBy("issuedAt", "desc")
-        )
-
-        const unsubscribe = onSnapshot(finesQuery, (snapshot) => {
-            const finesData: Fine[] = []
-            snapshot.forEach(doc => {
-                finesData.push({ id: doc.id, ...doc.data() } as Fine)
-            })
-            setFines(finesData)
-            setLoading(false)
-        })
-
-        return () => unsubscribe()
-    }, [])
 
     // Get unique inspectors for filter
     const inspectors = useMemo(() => {
@@ -146,7 +112,7 @@ export function FinesManagement() {
 
         if (searchTerm) {
             const term = searchTerm.toLowerCase()
-            result = result.filter(f => f.plate.toLowerCase().includes(term))
+            result = result.filter(f => f.vehiclePlate.toLowerCase().includes(term))
         }
 
         if (statusFilter !== "all") {
@@ -160,7 +126,7 @@ export function FinesManagement() {
         if (dateFilter) {
             const filterDate = new Date(dateFilter)
             result = result.filter(f => {
-                const fineDate = f.issuedAt?.toDate?.()
+                const fineDate = f.date
                 if (!fineDate) return false
                 return fineDate.toDateString() === filterDate.toDateString()
             })
@@ -184,17 +150,14 @@ export function FinesManagement() {
 
         setSaving(true)
         try {
-            const fineRef = doc(db, "fines", selectedFine.id)
-            await updateDoc(fineRef, {
-                status: "cancelled",
-                cancelledAt: Timestamp.now(),
-                cancelledBy: "admin",
-                cancelReason: cancelReason.trim()
+            await cancelFineMutation.mutateAsync({
+                fineId: selectedFine.id,
+                reason: cancelReason.trim()
             })
 
             toast({
                 title: "Multa Anulada",
-                description: `La multa para ${selectedFine.plate} ha sido anulada.`
+                description: `La multa para ${selectedFine.vehiclePlate} ha sido anulada.`
             })
             setIsDialogOpen(false)
             setCancelReason("")
@@ -211,14 +174,10 @@ export function FinesManagement() {
 
     const handleMarkAsPaid = async (fine: Fine) => {
         try {
-            const fineRef = doc(db, "fines", fine.id)
-            await updateDoc(fineRef, {
-                status: "paid",
-                paidAt: Timestamp.now()
-            })
+            await markPaidMutation.mutateAsync(fine.id)
             toast({
                 title: "Multa Pagada",
-                description: `La multa para ${fine.plate} ha sido marcada como pagada.`
+                description: `La multa para ${fine.vehiclePlate} ha sido marcada como pagada.`
             })
         } catch (error) {
             toast({
@@ -232,11 +191,11 @@ export function FinesManagement() {
     const exportToCSV = () => {
         const headers = ["Patente", "Monto", "Motivo", "Inspector", "Fecha", "Estado"]
         const rows = filteredFines.map(f => [
-            f.plate,
+            f.vehiclePlate,
             f.amount?.toString() || "0",
             f.reason,
             f.inspectorName || "N/A",
-            f.issuedAt?.toDate?.().toLocaleString("es-AR") || "",
+            f.date?.toLocaleString("es-AR") || "",
             f.status === "pending" ? "Pendiente" : f.status === "paid" ? "Pagada" : "Anulada"
         ])
 
@@ -433,7 +392,7 @@ export function FinesManagement() {
                                                         <Car className="size-5" />
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-black text-slate-900 tracking-wider uppercase">{fine.plate}</span>
+                                                        <span className="text-sm font-black text-slate-900 tracking-wider uppercase">{fine.vehiclePlate}</span>
                                                         {getStatusBadge(fine.status)}
                                                     </div>
                                                 </div>
@@ -454,8 +413,8 @@ export function FinesManagement() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col text-[11px] font-bold text-slate-500">
-                                                    <span className="flex items-center gap-1"><Calendar className="size-3 opacity-50" /> {fine.issuedAt?.toDate?.().toLocaleDateString("es-AR")}</span>
-                                                    <span className="flex items-center gap-1 opacity-60"><Clock className="size-3" /> {fine.issuedAt?.toDate?.().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</span>
+                                                    <span className="flex items-center gap-1"><Calendar className="size-3 opacity-50" /> {fine.date?.toLocaleDateString("es-AR")}</span>
+                                                    <span className="flex items-center gap-1 opacity-60"><Clock className="size-3" /> {fine.date?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -517,7 +476,7 @@ export function FinesManagement() {
                                 <AlertCircle className="size-5" /> Anular Multa
                             </DialogTitle>
                             <DialogDescription className="text-sm font-medium text-slate-500">
-                                Patente: <span className="font-bold text-slate-900">{selectedFine?.plate}</span> • Monto: <span className="font-bold text-slate-900">${(selectedFine?.amount || 0).toLocaleString("es-AR")}</span>
+                                Patente: <span className="font-bold text-slate-900">{selectedFine?.vehiclePlate}</span> • Monto: <span className="font-bold text-slate-900">${(selectedFine?.amount || 0).toLocaleString("es-AR")}</span>
                             </DialogDescription>
                         </DialogHeader>
                     </div>

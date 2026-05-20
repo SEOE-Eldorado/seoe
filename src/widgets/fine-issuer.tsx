@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useFines } from "@entities/fines-context"
+import { useAuth } from "@entities/auth-context"
 import { Button } from "@shared/ui/atoms/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@shared/ui/atoms/card"
 import { Label } from "@shared/ui/atoms/label"
@@ -21,66 +22,98 @@ const FINE_TYPES = [
     { id: "wrong_zone", label: "Zona Incorrecta", amount: 10000, description: "Estacionado en una zona no habilitada o diferente." },
 ]
 
+// Generate a short unique acta number
+let lastActaNumber = Math.floor(Date.now() / 1000) % 100000
+function generateActaNumber(inspectorId?: string): string {
+  lastActaNumber++
+  const prefix = inspectorId ? inspectorId.slice(-4).toUpperCase() : "SEOE"
+  const suffix = String(lastActaNumber).padStart(5, "0")
+  return `${prefix}-${suffix}`
+}
+
 export function FineIssuer({ plate, onSuccess, onCancel }: FineIssuerProps) {
     const { issueFine } = useFines()
+    const { user } = useAuth()
     const [selectedType, setSelectedType] = useState(FINE_TYPES[0].id)
     const [loading, setLoading] = useState(false)
     const [step, setStep] = useState<"form" | "confirm" | "success">("form")
+    const [lastActaNumber, setLastActaNumber] = useState("")
+    const [lastFineAmount, setLastFineAmount] = useState(0)
+
+    const isSunmi = typeof window !== 'undefined' && !!(window as any).SunmiPrinter
+
+    const doPrint = useCallback((actaNumber: string, amount: number) => {
+        const typeInfo = FINE_TYPES.find(t => t.id === selectedType)!
+        const dateStr = new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://inspectores.eldorado.gob.ar'
+        const qrData = `${baseUrl}/payment?plate=${encodeURIComponent(plate)}&amount=${amount}`
+
+        printFineTicket({
+            plate,
+            type: typeInfo.label,
+            amount,
+            location: "Ubicación detectada (GPS)",
+            date: dateStr,
+            inspectorName: user?.name || undefined,
+            actaNumber,
+            qrData,
+        })
+    }, [plate, selectedType, user?.name])
 
     const handleIssue = async () => {
-    setLoading(true)
-    const typeInfo = FINE_TYPES.find(t => t.id === selectedType)!
+        setLoading(true)
+        const typeInfo = FINE_TYPES.find(t => t.id === selectedType)!
 
-    try {
-      let targetUserId = "unlinked"
+        try {
+            let targetUserId = "unlinked"
 
-      try {
-        const { db } = await import("@shared/api/firebase")
-        const { collection, query, where, getDocs } = await import("firebase/firestore")
+            try {
+                const { db } = await import("@shared/api/firebase")
+                const { collection, query, where, getDocs } = await import("firebase/firestore")
 
-        const cleanPlate = plate.toUpperCase().replace(/\s/g, "")
-        const vehiclesQuery = query(
-          collection(db, "vehicles"),
-          where("licensePlate", "==", cleanPlate)
-        )
-        const snapshot = await getDocs(vehiclesQuery)
+                const cleanPlate = plate.toUpperCase().replace(/\s/g, "")
+                const vehiclesQuery = query(
+                    collection(db, "vehicles"),
+                    where("licensePlate", "==", cleanPlate)
+                )
+                const snapshot = await getDocs(vehiclesQuery)
 
-        if (!snapshot.empty) {
-          targetUserId = snapshot.docs[0].data().userId
+                if (!snapshot.empty) {
+                    targetUserId = snapshot.docs[0].data().userId
+                }
+            } catch (e) {
+                console.warn("Could not resolve userId for plate:", plate, e)
+            }
+
+            await issueFine({
+                vehiclePlate: plate,
+                type: selectedType as any,
+                amount: typeInfo.amount,
+                description: typeInfo.description,
+                location: "Ubicación detectada (GPS)",
+                userId: targetUserId,
+            })
+
+            // Generate acta number
+            const actaNumber = generateActaNumber(user?.id)
+            setLastActaNumber(actaNumber)
+            setLastFineAmount(typeInfo.amount)
+            setStep("success")
+
+            // Auto-print on Sunmi devices
+            if (isSunmi) {
+                setTimeout(() => doPrint(actaNumber, typeInfo.amount), 500)
+            }
+        } catch (error) {
+            console.error("Fine issue error:", error)
+        } finally {
+            setLoading(false)
         }
-      } catch (e) {
-        console.warn("Could not resolve userId for plate:", plate, e)
-      }
-
-      await issueFine({
-        vehiclePlate: plate,
-        type: selectedType as any,
-        amount: typeInfo.amount,
-        description: typeInfo.description,
-        location: "Ubicación detectada (GPS)",
-        userId: targetUserId,
-      })
-
-      setStep("success")
-    } catch (error) {
-      console.error("Fine issue error:", error)
-    } finally {
-      setLoading(false)
     }
-  }
 
-  const handlePrintReceipt = () => {
-    const typeInfo = FINE_TYPES.find(t => t.id === selectedType)!
-    const dateStr = new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
-
-    printFineTicket({
-      plate,
-      type: typeInfo.label,
-      amount: typeInfo.amount,
-      location: "Ubicación detectada (GPS)",
-      date: dateStr,
-    })
-  }
+    const handlePrintReceipt = () => {
+        doPrint(lastActaNumber || generateActaNumber(user?.id), lastFineAmount || FINE_TYPES.find(t => t.id === selectedType)!.amount)
+    }
 
     if (step === "success") {
         return (
@@ -91,17 +124,32 @@ export function FineIssuer({ plate, onSuccess, onCancel }: FineIssuerProps) {
                     </div>
                     <div>
                         <h3 className="text-2xl font-black text-slate-900 tracking-tight">Acta Registrada</h3>
+                        {lastActaNumber && (
+                            <p className="text-sm font-mono font-bold text-slate-600 mt-1">Nro: {lastActaNumber}</p>
+                        )}
                         <p className="text-sm font-medium text-slate-500 mt-2">La infracción para <span className="font-bold text-slate-800 uppercase px-1">{plate}</span> ha sido procesada correctamente en la nube.</p>
                     </div>
                     
                     <div className="w-full space-y-3 mt-4">
-                        <Button 
-                            onClick={handlePrintReceipt}
-                            className="w-full h-14 rounded-sm bg-neutral-900 hover:bg-neutral-800 text-white font-bold tracking-widest text-sm shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
-                        >
-                            <Printer className="size-5" />
-                            IMPRIMIR TICKET (SUNMI)
-                        </Button>
+                        {!isSunmi && (
+                            <Button 
+                                onClick={handlePrintReceipt}
+                                className="w-full h-14 rounded-sm bg-neutral-900 hover:bg-neutral-800 text-white font-bold tracking-widest text-sm shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                            >
+                                <Printer className="size-5" />
+                                IMPRIMIR ACTA
+                            </Button>
+                        )}
+                        {isSunmi && (
+                            <Button 
+                                onClick={handlePrintReceipt}
+                                variant="outline"
+                                className="w-full h-12 rounded-sm font-bold flex items-center justify-center gap-2"
+                            >
+                                <Printer className="size-4" />
+                                REIMPRIMIR ACTA
+                            </Button>
+                        )}
                         <Button 
                             variant="ghost" 
                             onClick={onSuccess}

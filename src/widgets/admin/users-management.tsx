@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { db } from "@shared/api/firebase"
-import { collection, onSnapshot, doc, updateDoc, query, orderBy, limit, startAfter, getDocs } from "firebase/firestore"
+import { useState, useEffect, useMemo } from "react"
+import { useAllUsers, useUpdateUser } from "@shared/api/admin-users"
 import { Card, CardContent } from "@shared/ui/atoms/card"
 import { Button } from "@shared/ui/atoms/button"
 import { Input } from "@shared/ui/atoms/input"
@@ -28,7 +27,7 @@ import {
     Edit2,
     Shield,
     ShieldCheck,
-    User,
+    UserIcon,
     Wallet,
     AlertTriangle,
     Ban,
@@ -40,52 +39,22 @@ import {
     ArrowUpDown
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
-
-interface UserData {
-    id: string
-    name: string
-    email: string
-    phone?: string
-    role: "user" | "inspector" | "admin"
-    balance: number
-    createdAt: any
-    blocked?: boolean
-}
+import type { User } from "@shared/types"
 
 export function UsersManagement() {
     const { toast } = useToast()
-    const [users, setUsers] = useState<UserData[]>([])
-    const [filteredUsers, setFilteredUsers] = useState<UserData[]>([])
-    const [loading, setLoading] = useState(true)
+    const { data: users = [], isLoading: loading } = useAllUsers()
+    const updateUserMutation = useUpdateUser()
+    const [filteredUsers, setFilteredUsers] = useState<User[]>([])
     const [searchTerm, setSearchTerm] = useState("")
     const [roleFilter, setRoleFilter] = useState<string>("all")
 
     // Edit dialog
     const [isEditOpen, setIsEditOpen] = useState(false)
-    const [editingUser, setEditingUser] = useState<UserData | null>(null)
+    const [editingUser, setEditingUser] = useState<User | null>(null)
     const [editBalance, setEditBalance] = useState("")
     const [editRole, setEditRole] = useState<string>("")
     const [saving, setSaving] = useState(false)
-
-    useEffect(() => {
-        const usersRef = collection(db, "users")
-        const unsubscribe = onSnapshot(usersRef, (snapshot) => {
-            const usersData: UserData[] = []
-            snapshot.forEach(doc => {
-                usersData.push({ id: doc.id, ...doc.data() } as UserData)
-            })
-            // Sort by creation date
-            usersData.sort((a, b) => {
-                const dateA = a.createdAt?.toDate?.() || new Date(0)
-                const dateB = b.createdAt?.toDate?.() || new Date(0)
-                return dateB.getTime() - dateA.getTime()
-            })
-            setUsers(usersData)
-            setLoading(false)
-        })
-
-        return () => unsubscribe()
-    }, [])
 
     // Filter users when search or role changes
     useEffect(() => {
@@ -107,7 +76,7 @@ export function UsersManagement() {
         setFilteredUsers(result)
     }, [users, searchTerm, roleFilter])
 
-    const handleEditUser = (user: UserData) => {
+    const handleEditUser = (user: User) => {
         setEditingUser(user)
         setEditBalance((user.balance ?? 0).toString())
         setEditRole(user.role || "user")
@@ -119,10 +88,12 @@ export function UsersManagement() {
 
         setSaving(true)
         try {
-            const userRef = doc(db, "users", editingUser.id)
-            await updateDoc(userRef, {
-                balance: parseFloat(editBalance) || 0,
-                role: editRole
+            await updateUserMutation.mutateAsync({
+                userId: editingUser.id,
+                data: {
+                    balance: parseFloat(editBalance) || 0,
+                    role: editRole as User["role"]
+                }
             })
 
             toast({
@@ -141,11 +112,11 @@ export function UsersManagement() {
         }
     }
 
-    const handleToggleBlock = async (user: UserData) => {
+    const handleToggleBlock = async (user: User) => {
         try {
-            const userRef = doc(db, "users", user.id)
-            await updateDoc(userRef, {
-                blocked: !user.blocked
+            await updateUserMutation.mutateAsync({
+                userId: user.id,
+                data: { blocked: !user.blocked }
             })
             toast({
                 title: user.blocked ? "Usuario Desbloqueado" : "Usuario Bloqueado",
@@ -200,7 +171,7 @@ export function UsersManagement() {
                     <p className="text-sm text-slate-500 font-medium">Administra cuentas, roles y saldos de la plataforma</p>
                 </div>
                 <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold rounded-lg h-10 px-4 gap-2">
-                    <User className="size-4" />
+                    <UserIcon className="size-4" />
                     Nuevo Usuario
                 </Button>
             </div>
@@ -298,7 +269,7 @@ export function UsersManagement() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 border border-slate-100 ${user.role === 'admin' ? 'bg-violet-50 text-violet-500' : user.role === 'inspector' ? 'bg-blue-50 text-blue-500' : 'bg-slate-50 text-slate-500'}`}>
-                                                    {user.role === 'admin' ? <ShieldCheck className="size-5" /> : user.role === 'inspector' ? <Shield className="size-5" /> : <User className="size-5" />}
+                                                    {user.role === 'admin' ? <ShieldCheck className="size-5" /> : user.role === 'inspector' ? <Shield className="size-5" /> : <UserIcon className="size-5" />}
                                                 </div>
                                                 <div className="flex flex-col min-w-0">
                                                     <span className="text-sm font-bold text-slate-900 truncate tracking-tight">{user.name || "Sin nombre"}</span>
@@ -407,7 +378,7 @@ export function UsersManagement() {
                                     <SelectItem value="user">
                                         <div className="flex items-center gap-2 font-medium">
                                             <div className="p-1 bg-slate-100 rounded">
-                                                <User className="size-3 text-slate-500" />
+                                                <UserIcon className="size-3 text-slate-500" />
                                             </div>
                                             <span>Usuario</span>
                                         </div>

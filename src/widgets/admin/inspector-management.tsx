@@ -44,17 +44,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
 import { useSettings } from "@entities/settings-context"
-
-interface UserData {
-    id: string
-    name: string
-    email: string
-    role: "user" | "inspector" | "admin"
-    assignedZones?: string[]
-    lastActivity?: Timestamp
-    lastLocation?: { latitude: number; longitude: number }
-    lastPlateCheck?: string
-}
+import type { User } from "@shared/types"
 
 interface ActivityLog {
     id: string
@@ -69,13 +59,13 @@ interface ActivityLog {
 export function InspectorManagement() {
     const { toast } = useToast()
     const { zones } = useSettings()
-    const [inspectors, setInspectors] = useState<UserData[]>([])
+    const [inspectors, setInspectors] = useState<User[]>([])
     const [logs, setLogs] = useState<ActivityLog[]>([])
     const [loading, setLoading] = useState(true)
 
     // UI state
     const [searchTerm, setSearchTerm] = useState("")
-    const [activeInspector, setActiveInspector] = useState<UserData | null>(null)
+    const [activeInspector, setActiveInspector] = useState<User | null>(null)
     const [isAssignZonesOpen, setIsAssignZonesOpen] = useState(false)
     const [saving, setSaving] = useState(false)
 
@@ -86,9 +76,9 @@ export function InspectorManagement() {
             where("role", "==", "inspector")
         )
         const unsubInspectors = onSnapshot(inspectorsQuery, (snapshot) => {
-            const data: UserData[] = []
+            const data: User[] = []
             snapshot.forEach(doc => {
-                data.push({ id: doc.id, ...doc.data() } as UserData)
+                data.push({ id: doc.id, ...doc.data() } as User)
             })
             setInspectors(data)
             setLoading(false)
@@ -123,7 +113,7 @@ export function InspectorManagement() {
         )
     }, [inspectors, searchTerm])
 
-    const handleAssignZones = async (inspector: UserData, zoneIds: string[]) => {
+    const handleAssignZones = async (inspector: User, zoneIds: string[]) => {
         setSaving(true)
         try {
             const inspectorRef = doc(db, "users", inspector.id)
