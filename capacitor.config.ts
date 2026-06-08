@@ -18,10 +18,10 @@ const config: CapacitorConfig = {
       splashImmersive: true,
     },
   },
-  server: {
-    url: process.env.CAPACITOR_SERVER_URL || '',
+  server: process.env.CAPACITOR_SERVER_URL ? {
+    url: process.env.CAPACITOR_SERVER_URL,
     cleartext: true,
-  },
+  } : undefined,
   android: {
     buildOptions: {
       keystorePath: undefined,

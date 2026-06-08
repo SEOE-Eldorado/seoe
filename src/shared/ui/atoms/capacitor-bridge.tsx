@@ -27,12 +27,12 @@ export function useSunmiPrinter() {
 
       try {
         const { SunmiPrinter } = await import("@kduma-autoid/capacitor-sunmi-printer")
-        const status = await SunmiPrinter.getServiceStatus()
+        const status: any = await SunmiPrinter.getServiceStatus()
         setIsAvailable(status === 1 || status === "connected")
 
         try {
-          const model = await SunmiPrinter.getPrinterModel()
-          setPrinterModel(model)
+          const model: any = await SunmiPrinter.getPrinterModel()
+          setPrinterModel(model?.model ?? null)
         } catch { /* ignore */ }
       } catch {
         setIsAvailable(false)

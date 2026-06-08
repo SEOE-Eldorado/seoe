@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@entities/auth-context"
 import { useTranslations } from "next-intl"
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password"]
+const PUBLIC_ROUTES = ["/login", "/login/", "/register", "/register/", "/forgot-password", "/forgot-password/"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -14,6 +14,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const isPublic = PUBLIC_ROUTES.includes(pathname)
   const isInspectorApp = process.env.NEXT_PUBLIC_APP_ENV === "inspector"
   const t = useTranslations("loading")
+  console.log("[AuthGuard] loading:", loading, "user:", !!user, "pathname:", pathname, "isPublic:", isPublic)
 
   useEffect(() => {
     if (loading) return

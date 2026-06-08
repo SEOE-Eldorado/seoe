@@ -11,6 +11,6 @@ test.describe('Fiscalización (Inspector Flow)', () => {
         
         // Verify the page rendered (body has content)
         const bodyText = await page.textContent('body');
-        expect(bodyText.length).toBeGreaterThan(0);
+        expect(bodyText?.length ?? 0).toBeGreaterThan(0);
     });
 });

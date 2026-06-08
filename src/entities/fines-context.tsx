@@ -4,7 +4,7 @@ import { createContext, useContext, type ReactNode } from "react"
 import { useAuth } from "@entities/auth-context"
 import { db } from "@shared/api/firebase"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { collection, query, where, getDocs, doc, updateDoc, addDoc, Timestamp, writeBatch } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, setDoc, Timestamp, writeBatch } from "firebase/firestore"
 import { getFunctions, httpsCallable } from "firebase/functions"
 import type { Fine } from "@shared/types"
 
@@ -100,6 +100,7 @@ export function FinesProvider({ children }: { children: ReactNode }) {
       const fineRef = doc(collection(db, "fines"));
       batch.set(fineRef, {
         ...fineData,
+        zone: fineData.zone || fineData.location || "No especificada",
         reason: fineData.reason || fineData.description || "",
         description: fineData.description || fineData.reason || "",
         status: "pending",
@@ -110,26 +111,30 @@ export function FinesProvider({ children }: { children: ReactNode }) {
         inspectorName: user?.name ?? undefined,
       });
 
-      // 2. Create a notification for the affected user so they are alerted immediately
-      const notifRef = doc(collection(db, "notifications"));
-      const fineTypeLabels: Record<string, string> = {
-        overtime: "Exceso de tiempo",
-        no_payment: "Sin pago registrado",
-        wrong_zone: "Zona incorrecta",
-        expired_meter: "Medidor vencido",
-      };
-      batch.set(notifRef, {
-        userId: fineData.userId,
-        type: "fine",
-        title: "⚠️ Multa recibida",
-        message: `Se registró una multa de $${fineData.amount} en ${fineData.location}. Motivo: ${fineData.type ? fineTypeLabels[fineData.type] : fineData.reason ?? fineData.description ?? ''}. Vence el ${dueDate.toLocaleDateString("es-AR")}.`,
-        priority: "high",
-        actionUrl: "/fines",
-        date: Timestamp.fromDate(now),
-        read: false,
-      });
-
       await batch.commit();
+
+      // Try to create notification separately (may fail if not admin)
+      try {
+        const notifRef = doc(collection(db, "notifications"));
+        const fineTypeLabels: Record<string, string> = {
+          overtime: "Exceso de tiempo",
+          no_payment: "Sin pago registrado",
+          wrong_zone: "Zona incorrecta",
+          expired_meter: "Medidor vencido",
+        };
+        await setDoc(notifRef, {
+          userId: fineData.userId,
+          type: "fine",
+          title: "⚠️ Multa recibida",
+          message: `Se registró una multa de $${fineData.amount} en ${fineData.location}. Motivo: ${fineData.type ? fineTypeLabels[fineData.type] : fineData.reason ?? fineData.description ?? ''}. Vence el ${dueDate.toLocaleDateString("es-AR")}.`,
+          priority: "high",
+          actionUrl: "/fines",
+          date: Timestamp.fromDate(now),
+          read: false,
+        });
+      } catch (notifErr) {
+        console.warn("Could not create notification (non-admin):", notifErr);
+      }
     },
     onSuccess: () => {
       // Invalidate all fines queries since this is typically done by inspector

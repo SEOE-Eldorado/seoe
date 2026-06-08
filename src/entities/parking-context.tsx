@@ -8,6 +8,9 @@ import { db } from "@shared/api/firebase"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { collection, query, where, getDocs, runTransaction, doc, Timestamp, setDoc, addDoc } from "firebase/firestore"
 
+// Export the type for external consumers
+export type { ParkingSession }
+
 interface ParkingContextType {
   activeSessions: ParkingSession[]
   activeSession: ParkingSession | null

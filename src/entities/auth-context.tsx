@@ -44,7 +44,7 @@ interface AuthContextType {
   setupRecaptcha: (elementId: string) => void
   startPhoneVerification: (phoneNumber: string) => Promise<void>
   confirmPhoneVerification: (code: string) => Promise<any>
-  updatePreferences: (prefs: Partial<User["preferences"]>) => Promise<void>
+  updatePreferences: (prefs: Partial<NonNullable<User["preferences"]>>) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)

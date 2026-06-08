@@ -10,12 +10,18 @@ export interface FinePrintData {
 }
 
 export async function printFineTicket(data: FinePrintData): Promise<void> {
-  const isCapacitor = typeof window !== 'undefined' &&
-    (window as any).SunmiPrinter !== undefined
+  const isNative = typeof window !== 'undefined' &&
+    typeof (window as any).Capacitor !== 'undefined'
 
-  if (isCapacitor) {
+  if (isNative) {
     try {
       const { SunmiPrinter } = await import('@kduma-autoid/capacitor-sunmi-printer')
+      // Ensure printer service is bound before printing
+      try {
+        await SunmiPrinter.bindService()
+      } catch (_) {
+        // May already be bound — ignore
+      }
       await printNative(SunmiPrinter, data)
       return
     } catch (e) {
@@ -27,7 +33,7 @@ export async function printFineTicket(data: FinePrintData): Promise<void> {
 }
 
 async function printNative(SunmiPrinter: any, data: FinePrintData): Promise<void> {
-  await SunmiPrinter.enterPrinterBuffer(true)
+  await SunmiPrinter.enterPrinterBuffer({ clean: true })
 
   try {
     // Header
@@ -68,7 +74,7 @@ async function printNative(SunmiPrinter: any, data: FinePrintData): Promise<void
     // QR hint
     if (data.qrData) {
       await SunmiPrinter.printText({ text: '  Escanee QR para pagar ↓\n\n' })
-      await SunmiPrinter.printQRCode({ text: data.qrData, size: 6 })
+      await SunmiPrinter.printQRCode({ content: data.qrData, size: 6 })
       await SunmiPrinter.printText({ text: '\n' })
     }
 
@@ -79,7 +85,7 @@ async function printNative(SunmiPrinter: any, data: FinePrintData): Promise<void
 
     await SunmiPrinter.commitPrinterBuffer()
   } catch (e) {
-    await SunmiPrinter.exitPrinterBuffer(false)
+    await SunmiPrinter.exitPrinterBuffer({ commit: false })
     throw e
   }
 }

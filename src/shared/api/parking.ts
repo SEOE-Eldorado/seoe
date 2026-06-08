@@ -65,7 +65,7 @@ export async function startParking(data: {
     const userSnap = await transaction.get(userRef)
     if (!userSnap.exists) throw new Error("Usuario no encontrado")
 
-    const currentBalance = userSnap.data().balance ?? 0
+    const currentBalance = userSnap.data()?.balance ?? 0
     if (currentBalance < data.cost) throw new Error("Saldo insuficiente")
 
     transaction.set(newSessionRef, {
@@ -94,6 +94,7 @@ export async function extendParking(sessionId: string, additionalHours: number, 
     if (!sessionSnap.exists) throw new Error("Sesión no encontrada")
 
     const session = sessionSnap.data()
+    if (!session) throw new Error("Sesión sin datos")
     const currentEndTime = session.endTime?.toDate ? session.endTime.toDate() : new Date(session.endTime)
     const newEndTime = new Date(currentEndTime.getTime() + additionalHours * 60 * 60 * 1000)
 

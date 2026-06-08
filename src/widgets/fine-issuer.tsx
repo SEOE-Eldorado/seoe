@@ -40,7 +40,8 @@ export function FineIssuer({ plate, onSuccess, onCancel }: FineIssuerProps) {
     const [lastActaNumber, setLastActaNumber] = useState("")
     const [lastFineAmount, setLastFineAmount] = useState(0)
 
-    const isSunmi = typeof window !== 'undefined' && !!(window as any).SunmiPrinter
+    const isNativeApp = typeof window !== 'undefined' && typeof (window as any).Capacitor !== 'undefined'
+    const isSunmi = isNativeApp
 
     const doPrint = useCallback((actaNumber: string, amount: number) => {
         const typeInfo = FINE_TYPES.find(t => t.id === selectedType)!
@@ -91,6 +92,7 @@ export function FineIssuer({ plate, onSuccess, onCancel }: FineIssuerProps) {
                 amount: typeInfo.amount,
                 description: typeInfo.description,
                 location: "Ubicación detectada (GPS)",
+                zone: "Zona detectada",
                 userId: targetUserId,
             })
 

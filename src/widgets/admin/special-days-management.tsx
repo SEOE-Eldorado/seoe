@@ -32,7 +32,8 @@ import {
     Settings2,
     Zap,
     MapPin,
-    AlertTriangle
+    AlertTriangle,
+    Edit
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
 
@@ -369,7 +370,7 @@ export function SpecialDaysManagement() {
                                 onClick={() => handleShowForm(day)}
                                 className="size-9 rounded-[1.25px] bg-slate-50 text-slate-400 hover:text-slate-900 border border-slate-100 flex items-center justify-center transition-colors"
                             >
-                                <Edit2 className="size-4" />
+                                <Edit className="size-4" />
                             </button>
                             <button
                                 onClick={() => handleDelete(day.id)}

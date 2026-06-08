@@ -117,7 +117,7 @@ export function MenuPage({ onBack, onNavigate }: { onBack: () => void; onNavigat
                         className="w-full flex items-center justify-center gap-3 p-6 rounded-[8px] bg-red-50 text-red-500 font-black uppercase text-[12px] tracking-widest hover:bg-red-100 transition-all border border-red-100 shadow-sm"
                     >
                         <span className="material-symbols-outlined text-xl">logout</span>
-                        {t("logout", {}, { fallback: "Cerrar Sesión" })}
+                        {t("logout")}
                     </button>
                 </section>
 

@@ -88,6 +88,7 @@ export const fineSchema = z.object({
   description: z.string().optional(),
   type: z.enum(["overtime", "no_payment", "wrong_zone", "expired_meter"]).optional(),
   location: z.string().default(""),
+  zone: z.string().default(""),
   date: dateFromTimestamp,
   status: z.enum(["pending", "paid", "contested", "cancelled"]).default("pending"),
   createdAt: dateFromTimestamp,
