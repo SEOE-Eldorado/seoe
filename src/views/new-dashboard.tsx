@@ -275,7 +275,7 @@ export function NewDashboard() {
 
                         {/* Balance Content Card - Horizontal Style Mockup */}
                         <div className="flex overflow-x-auto no-scrollbar gap-4 -mx-6 px-6 pb-2">
-                            <div className="min-w-[85%] bg-white rounded-4xl p-7 border border-border shadow-sm relative overflow-hidden shrink-0">
+                            <div className="min-w-[85%] bg-white rounded-4xl p-7 border border-border/80 shadow-wallet-elevated relative overflow-hidden shrink-0">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex items-center space-x-3">
                                         <div className="size-8 bg-blue-600 rounded-full flex items-center justify-center text-white overflow-hidden">
@@ -328,14 +328,14 @@ export function NewDashboard() {
 
                              <button
                                 onClick={() => router.push("/dashboard/vehicles")}
-                                className="h-16 bg-white border border-border text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-sm"
+                                className="h-16 bg-white border border-border/80 text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-wallet-card"
                             >
                                 <span className="material-symbols-outlined text-neutral-text/60">directions_car</span>
                                 <span className="font-bold">Vehículos</span>
                             </button>
                             <button
                                 onClick={() => router.push("/dashboard/fines")}
-                                className="h-16 bg-white border border-border text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-sm"
+                                className="h-16 bg-white border border-border/80 text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-wallet-card"
                             >
                                 <span className="material-symbols-outlined text-neutral-text/60">receipt_long</span>
                                 <span className="font-bold">Multas</span>
@@ -343,7 +343,7 @@ export function NewDashboard() {
 
                             <button
                                 onClick={() => router.push("/dashboard/history")}
-                                className="h-16 bg-white border border-border text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-sm"
+                                className="h-16 bg-white border border-border/80 text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-wallet-card"
                             >
                                 <span className="material-symbols-outlined text-neutral-text/60">history</span>
                                 <span className="font-bold">Historial</span>
@@ -392,10 +392,10 @@ export function NewDashboard() {
 
                             <div className="space-y-3">
                                 {historyItems.map((item) => (
-                                    <div key={item.id} className="bg-white rounded-3xl p-4 flex items-center space-x-4 border border-border shadow-sm active:scale-[0.98] transition-all">
-                                        <div className="size-11 bg-neutral-bg rounded-full flex items-center justify-center text-neutral-text/70">
-                                            <span className="material-symbols-outlined text-xl">
-                                                {item.amount > 0 ? "add_card" : "local_parking"}
+                                    <div key={item.id} className="bg-white rounded-3xl p-4 flex items-center space-x-4 border border-border/80 shadow-wallet-card active:scale-[0.98] transition-all">
+                            <div className="size-12 rounded-full bg-neutral-bg flex items-center justify-center text-neutral-text/50">
+                            <span className="material-symbols-outlined text-xl">
+                                {item.amount > 0 ? "add_card" : "local_parking"}
                                             </span>
                                         </div>
                                         <div className="flex-1">
@@ -442,7 +442,7 @@ export function NewDashboard() {
                 </main>
 
                 {/* Bottom Navigation - Refined Wallet Style */}
-                <nav className="fixed bottom-0 left-0 right-0 py-5 bg-white border-t border-border/40 flex justify-between items-center px-8 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] pb-safe rounded-t-[32px]">
+                <nav className="fixed bottom-0 left-0 right-0 py-5 bg-white border-t border-border/40 flex justify-between items-center px-8 z-50 shadow-wallet-bottom-nav pb-safe rounded-t-[32px]">
                     <button
                         onClick={() => {
                             haptic("light")

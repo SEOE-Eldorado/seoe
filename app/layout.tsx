@@ -11,7 +11,7 @@ import esMessages from "../src/shared/i18n/messages/es.json"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const dynamic = 'force-static'
+export const dynamic = 'force-dynamic'
 
 export function generateMetadata(): Metadata {
   const isInspector = process.env.NEXT_PUBLIC_APP_ENV === 'inspector'

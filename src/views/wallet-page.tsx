@@ -27,7 +27,7 @@ export function WalletPage() {
 
             <main className="flex-1 px-6 pb-24 space-y-8 overflow-y-auto pt-6 no-scrollbar">
                 {/* Balance Card - Matching Premium Banking Style */}
-                <div className="bg-white rounded-[10px] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden border border-border">
+                <div className="bg-white rounded-[10px] p-8 flex flex-col items-center justify-center shadow-wallet-elevated relative overflow-hidden border border-border/80">
                     <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
                         <span className="material-symbols-outlined text-[140px] text-neutral-text">account_balance_wallet</span>
                     </div>
@@ -46,7 +46,7 @@ export function WalletPage() {
                     <div className="relative z-10 w-full flex gap-3">
                         <button
                             onClick={() => setShowRechargeDialog(true)}
-                            className="flex-1 bg-primary-green hover:brightness-110 text-white px-6 py-4.5 rounded-[6px] text-sm font-black transition-all active:scale-[0.98] shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-2 tracking-tight uppercase"
+                            className="flex-1 bg-primary-green hover:brightness-110 text-white px-6 py-4.5 rounded-[6px] text-sm font-black transition-all active:scale-[0.98] shadow-[0_4px_12px_-4px_rgba(0,130,91,0.4)] flex items-center justify-center gap-2 tracking-tight uppercase"
                         >
                             <span className="material-symbols-outlined text-xl">add_circle</span>
                             CARGAR SALDO
@@ -58,14 +58,14 @@ export function WalletPage() {
                 <div className="grid grid-cols-2 gap-4">
                     <button
                         onClick={() => setShowHistory(!showHistory)}
-                        className={`flex flex-col items-start justify-between p-6 rounded-[8px] h-36 transition-all active:scale-[0.98] border border-border shell shadow-sm ${showHistory ? 'bg-primary-green text-white border-primary-green/20' : 'bg-white text-neutral-text'}`}
+                        className={`flex flex-col items-start justify-between p-6 rounded-[8px] h-36 transition-all active:scale-[0.98] border border-border/80 shadow-wallet-card ${showHistory ? 'bg-primary-green text-white border-primary-green/20' : 'bg-white text-neutral-text'}`}
                     >
                         <div className={`size-12 rounded-full flex items-center justify-center ${showHistory ? 'bg-white/20' : 'bg-neutral-bg text-neutral-text/50'}`}>
                             <span className="material-symbols-outlined text-2xl">history</span>
                         </div>
                         <span className="text-sm font-black tracking-tight uppercase">Actividad</span>
                     </button>
-                    <button className="bg-white flex flex-col items-start justify-between p-6 rounded-[8px] h-36 border border-border shadow-sm active:scale-[0.98] transition-all">
+                    <button className="bg-white flex flex-col items-start justify-between p-6 rounded-[8px] h-36 border border-border/80 shadow-wallet-card active:scale-[0.98] transition-all">
                         <div className="size-12 rounded-full bg-neutral-bg flex items-center justify-center text-neutral-text/50">
                             <span className="material-symbols-outlined text-2xl">credit_card</span>
                         </div>
@@ -74,7 +74,7 @@ export function WalletPage() {
                 </div>
 
                 {/* Auto-pay Card - Premium Settings Widget */}
-                <div className="bg-white rounded-[8px] p-6 border border-border shadow-sm">
+                <div className="bg-white rounded-[8px] p-6 border border-border/80 shadow-wallet-card">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="flex h-14 w-14 items-center justify-center rounded-[5px] bg-yellow-400/10 text-yellow-600">
