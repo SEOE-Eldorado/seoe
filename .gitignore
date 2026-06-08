@@ -16,6 +16,7 @@ node_modules
 /playwright-report/
 /test-results/
 tsconfig.tsbuildinfo
+*.tsbuildinfo
 .github/
 migrate_domain.mjs
 service-account.json
