@@ -8,14 +8,15 @@ import { ScrollArea } from "@shared/ui/atoms/scroll-area"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 import { useHaptic } from "@shared/lib/hooks/use-haptic"
+import { useRouter } from "next/navigation"
 
 interface NotificationsPanelProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onNavigate?: (view: string) => void
 }
 
-export function NotificationsPanel({ open, onOpenChange, onNavigate }: NotificationsPanelProps) {
+export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelProps) {
+  const router = useRouter()
   const { notifications, markAsRead, markAllAsRead, clearNotification } = useNotifications()
   const { user, updatePreferences } = useAuth()
   const { trigger: haptic } = useHaptic()
@@ -73,11 +74,9 @@ export function NotificationsPanel({ open, onOpenChange, onNavigate }: Notificat
   const handleActionClick = (type: string) => {
     haptic("medium")
     onOpenChange(false)
-    if (onNavigate) {
-      if (type === "fine") onNavigate("fines")
-      if (type === "parking_expiring") onNavigate("activeParking")
-      if (type === "parking_expired") onNavigate("fines")
-    }
+    if (type === "fine") router.push("/dashboard/fines")
+    if (type === "parking_expiring") router.push("/dashboard/active-parking")
+    if (type === "parking_expired") router.push("/dashboard/fines")
   }
 
   const formatTime = (date: Date) => {
