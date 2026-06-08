@@ -3,15 +3,16 @@
 import { useState } from "react"
 import { useParking } from "@entities/parking-context"
 import { useNotifications } from "@entities/notifications-context"
+import { useRouter } from "next/navigation"
 
 interface RemindersPageProps {
-    onBack: () => void
     onExtendParking?: () => void
 }
 
-export function RemindersPage({ onBack, onExtendParking }: RemindersPageProps) {
+export function RemindersPage({ onExtendParking }: RemindersPageProps) {
     const { activeSession, getRemainingTime } = useParking()
     const { notifications, markAsRead } = useNotifications()
+    const router = useRouter()
     const [activeTab, setActiveTab] = useState<"active" | "history">("active")
     const [pushEnabled, setPushEnabled] = useState(true)
     const [reminderTime, setReminderTime] = useState(10)
@@ -32,7 +33,7 @@ export function RemindersPage({ onBack, onExtendParking }: RemindersPageProps) {
                 <div className="flex items-center justify-between px-6 py-5">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={onBack}
+                            onClick={() => router.back()}
                             className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all shadow-sm"
                         >
                             <span className="material-symbols-outlined text-2xl font-black">chevron_left</span>

@@ -5,15 +5,12 @@ import { useAuth } from "@entities/auth-context"
 import { useVehicles } from "@entities/vehicles-context"
 import { useTranslations } from "next-intl"
 import { LanguageSwitcher } from "@shared/i18n/language-switcher"
+import { useRouter } from "next/navigation"
 
 type View = "profile" | "vehicles"
 
-interface ProfilePageProps {
-  onBack: () => void
-  onNavigate?: (view: string) => void
-}
-
-export function ProfilePage({ onBack, onNavigate }: ProfilePageProps) {
+export function ProfilePage() {
+  const router = useRouter()
   const { user, logout, toggleAutoPayFines } = useAuth()
   const { vehicles } = useVehicles()
   const t = useTranslations("profile")
@@ -25,7 +22,7 @@ export function ProfilePage({ onBack, onNavigate }: ProfilePageProps) {
             {/* Premium Header */}
             <div className="shrink-0 flex items-center bg-white px-6 py-5 border-b border-border/50 z-20">
                 <button
-                    onClick={onBack}
+                    onClick={() => router.back()}
                     className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all shadow-sm"
                 >
                     <span className="material-symbols-outlined text-2xl font-black">chevron_left</span>
@@ -96,7 +93,7 @@ export function ProfilePage({ onBack, onNavigate }: ProfilePageProps) {
                         <h3 className="text-[10px] font-black text-neutral-text/20 uppercase tracking-[0.2em] mb-4 px-1">{tMenu("management")}</h3>
                         <div className="bg-white rounded-[8px] shadow-sm border border-border overflow-hidden">
                             <div
-                                onClick={() => onNavigate && onNavigate("vehicles")}
+                                onClick={() => router.push("/dashboard/vehicles")}
                                 className="flex items-center justify-between p-6 hover:bg-neutral-bg transition-all cursor-pointer group"
                             >
                                 <div className="flex items-center gap-5">

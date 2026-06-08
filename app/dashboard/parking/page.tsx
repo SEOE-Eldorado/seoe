@@ -4,5 +4,5 @@ import { StartParkingPage } from "@views/start-parking-page"
 
 export default function ParkingRoute() {
   const router = useRouter()
-  return <StartParkingPage onBack={() => router.push("/dashboard")} onSuccess={() => router.push("/dashboard")} />
+  return <StartParkingPage onSuccess={() => router.push("/dashboard")} />
 }

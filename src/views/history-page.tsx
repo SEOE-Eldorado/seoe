@@ -5,10 +5,7 @@ import { useAuth } from "@entities/auth-context"
 import type { ParkingSession } from "@entities/parking-context"
 import { db } from "@shared/api/firebase"
 import { collection, query, where, getDocs } from "firebase/firestore"
-
-interface HistoryPageProps {
-  onBack: () => void
-}
+import { useRouter } from "next/navigation"
 
 /* Combined Type for History */
 type HistoryItem = {
@@ -24,7 +21,8 @@ type HistoryItem = {
   duration?: string
 }
 
-export function HistoryPage({ onBack }: HistoryPageProps) {
+export function HistoryPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
   const [activeTab, setActiveTab] = useState<"all" | "month">("all")
@@ -118,7 +116,7 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
       {/* Premium Header */}
       <header className="shrink-0 flex items-center bg-white px-6 py-5 z-10 border-b border-border/50">
         <button 
-          onClick={onBack} 
+          onClick={() => router.back()} 
           className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all"
         >
           <span className="material-symbols-outlined text-2xl">chevron_left</span>

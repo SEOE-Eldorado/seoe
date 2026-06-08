@@ -2,11 +2,11 @@
 
 import { useAuth } from "@entities/auth-context"
 import { useTranslations } from "next-intl"
+import { useRouter } from "next/navigation"
 
-type View = "home" | "vehicles" | "wallet" | "menu" | "fines" | "profile" | "history"
-
-export function MenuPage({ onBack, onNavigate }: { onBack: () => void; onNavigate: (view: View) => void }) {
+export function MenuPage() {
     const { user, logout } = useAuth()
+    const router = useRouter()
     const t = useTranslations("menu")
 
     const menuItems = [
@@ -22,7 +22,7 @@ export function MenuPage({ onBack, onNavigate }: { onBack: () => void; onNavigat
             {/* Premium Header */}
             <header className="shrink-0 flex items-center bg-white px-6 py-5 z-20 border-b border-border/50">
                 <button
-                    onClick={onBack}
+                    onClick={() => router.back()}
                     className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all shadow-sm"
                 >
                     <span className="material-symbols-outlined text-2xl font-black">chevron_left</span>
@@ -45,7 +45,7 @@ export function MenuPage({ onBack, onNavigate }: { onBack: () => void; onNavigat
                             <p className="text-[10px] font-black text-neutral-text/20 uppercase tracking-widest leading-none">{user?.email || t("user_email_placeholder")}</p>
                         </div>
                         <button
-                            onClick={() => onNavigate("profile")}
+                            onClick={() => router.push("/dashboard/profile")}
                             className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text/40 hover:text-neutral-text transition-all"
                         >
                             <span className="material-symbols-outlined text-2xl font-black">chevron_right</span>
@@ -60,7 +60,16 @@ export function MenuPage({ onBack, onNavigate }: { onBack: () => void; onNavigat
                         {menuItems.map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => onNavigate(item.id as View)}
+                                onClick={() => {
+                                    const routes: Record<string, string> = {
+                                        profile: "/dashboard/profile",
+                                        vehicles: "/dashboard/vehicles",
+                                        wallet: "/dashboard/wallet",
+                                        history: "/dashboard/history",
+                                        fines: "/dashboard/fines",
+                                    };
+                                    router.push(routes[item.id] || "/dashboard");
+                                }}
                                 className="w-full flex items-center gap-5 p-6 rounded-[8px] bg-white shadow-sm border border-border hover:bg-neutral-bg/30 transition-all cursor-pointer group"
                             >
                                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-bg text-neutral-text/20 group-hover:text-primary-green group-hover:bg-primary-green/5 transition-all border border-border group-hover:border-primary-green/20">

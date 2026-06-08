@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useVehicles } from "@entities/vehicles-context"
 import { AddVehiclePage } from "./add-vehicle-page"
+import { useRouter } from "next/navigation"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +19,8 @@ interface VehiclesPageProps {
   onBack: () => void
 }
 
-export function VehiclesPage({ onBack }: VehiclesPageProps) {
+export function VehiclesPage() {
+  const router = useRouter()
   const { vehicles, removeVehicle, setDefaultVehicle } = useVehicles()
   const [showAddPage, setShowAddPage] = useState(false)
   const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export function VehiclesPage({ onBack }: VehiclesPageProps) {
             {/* Top App Bar - Premium Design */}
             <div className="shrink-0 flex items-center bg-white px-6 py-5 border-b border-border/50 z-10">
                 <button
-                    onClick={onBack}
+                    onClick={() => router.back()}
                     className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all font-black shadow-sm"
                 >
                     <span className="material-symbols-outlined text-2xl font-black">chevron_left</span>

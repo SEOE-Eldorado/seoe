@@ -11,23 +11,13 @@ import { useToast } from "@shared/lib/hooks/use-toast"
 import { BalanceRechargeDialog } from "@widgets/dialogs/balance-recharge-dialog"
 import { WelcomeModal } from "@widgets/dialogs/welcome-modal"
 import { NotificationsPanel } from "@widgets/notifications-panel"
-import { VehiclesPage } from "@views/vehicles-page"
-import { FinesPage } from "@views/fines-page"
-import { ProfilePage } from "@views/profile-page"
-import { HistoryPage } from "@views/history-page"
-import { WalletPage } from "@views/wallet-page"
-import { MenuPage } from "@views/menu-page"
 import { ActiveParkingCard } from "@widgets/active-parking-card"
 import { SimpleActiveParkingCard } from "@widgets/simple-active-parking-card"
-import { StartParkingPage } from "@views/start-parking-page"
-import { ActiveParkingPage } from "@views/active-parking-page"
-import { RemindersPage } from "@views/reminders-page"
 import { DesktopBlocker } from "@shared/ui/atoms/desktop-blocker"
 import { LocationMap } from "@widgets/location-map"
 import { db } from "@shared/api/firebase"
 import { collection, query, where, getDocs } from "firebase/firestore"
-
-type View = "home" | "vehicles" | "wallet" | "menu" | "fines" | "profile" | "history" | "parking" | "activeParking" | "reminders"
+import { useRouter, usePathname } from "next/navigation"
 
 export function NewDashboard() {
     const { user } = useAuth()
@@ -38,8 +28,9 @@ export function NewDashboard() {
     const { vehicles, getDefaultVehicle } = useVehicles()
     const { trigger: haptic } = useHaptic()
     const { toast } = useToast()
+    const router = useRouter()
+    const pathname = usePathname()
 
-    const [currentView, setCurrentView] = useState<View>("home")
     const [showRechargeDialog, setShowRechargeDialog] = useState(false)
     const [showBalance, setShowBalance] = useState(true)
     const [showNotifications, setShowNotifications] = useState(false)
@@ -61,7 +52,7 @@ export function NewDashboard() {
                         title: n.title,
                         description: n.message,
                         variant: n.type === 'fine' ? "destructive" : "default",
-                        action: <div onClick={() => setCurrentView('fines')} className="font-bold text-xs border border-white/20 px-2 py-1 rounded cursor-pointer hover:bg-white/10">VER</div>
+                        action: <div onClick={() => router.push("/dashboard/fines")} className="font-bold text-xs border border-white/20 px-2 py-1 rounded cursor-pointer hover:bg-white/10">VER</div>
                     })
                     processedNotifs.current.add(n.id)
                 }
@@ -218,40 +209,10 @@ export function NewDashboard() {
             fetchHistory()
         }
     }, [user])
-    const isHome = currentView === "home"
-    const isHistory = currentView === "history"
-    const isWallet = currentView === "wallet"
-    const isMenu = currentView === "menu"
-
-    // Sub-pages
-    if (currentView === "vehicles") {
-        return <VehiclesPage onBack={() => setCurrentView("home")} />
-    }
-    if (currentView === "fines") {
-        return <FinesPage onBack={() => setCurrentView("home")} />
-    }
-    if (currentView === "profile") {
-        return <ProfilePage onBack={() => setCurrentView("home")} />
-    }
-    if (currentView === "history") {
-        return <HistoryPage onBack={() => setCurrentView("home")} />
-    }
-    if (currentView === "wallet") {
-        return <WalletPage onBack={() => setCurrentView("home")} />
-    }
-    if (currentView === "menu") {
-        return <MenuPage onBack={() => setCurrentView("home")} onNavigate={setCurrentView} />
-    }
-    if (currentView === "parking") {
-        return <StartParkingPage onBack={() => setCurrentView("home")} onSuccess={() => setCurrentView("home")} initialLocation={location} />
-    }
-    if (currentView === "activeParking") {
-        // Redundant if shown on home, but keep valid just in case
-        return <ActiveParkingPage onBack={() => setCurrentView("home")} />
-    }
-    if (currentView === "reminders") {
-        return <RemindersPage onBack={() => setCurrentView("home")} onExtendParking={() => setCurrentView("home")} />
-    }
+    const isHome = pathname === "/dashboard" || pathname === "/dashboard/"
+    const isHistory = pathname.startsWith("/dashboard/history")
+    const isWallet = pathname.startsWith("/dashboard/wallet")
+    const isMenu = pathname.startsWith("/dashboard/menu")
 
     return (
         <>
@@ -260,7 +221,7 @@ export function NewDashboard() {
                 <header className="px-6 pt-4 pb-8 flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button
-                            onClick={() => setCurrentView("profile")}
+                            onClick={() => router.push("/dashboard/profile")}
                             className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center text-primary-green font-bold text-xl overflow-hidden border border-emerald-100 shadow-sm"
                         >
                             {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : "GG"}
@@ -366,14 +327,14 @@ export function NewDashboard() {
                             </button>
 
                              <button
-                                onClick={() => setCurrentView("vehicles")}
+                                onClick={() => router.push("/dashboard/vehicles")}
                                 className="h-16 bg-white border border-border text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-sm"
                             >
                                 <span className="material-symbols-outlined text-neutral-text/60">directions_car</span>
                                 <span className="font-bold">Vehículos</span>
                             </button>
                             <button
-                                onClick={() => setCurrentView("fines")}
+                                onClick={() => router.push("/dashboard/fines")}
                                 className="h-16 bg-white border border-border text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-sm"
                             >
                                 <span className="material-symbols-outlined text-neutral-text/60">receipt_long</span>
@@ -381,7 +342,7 @@ export function NewDashboard() {
                             </button>
 
                             <button
-                                onClick={() => setCurrentView("history")}
+                                onClick={() => router.push("/dashboard/history")}
                                 className="h-16 bg-white border border-border text-neutral-text rounded-3xl flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-sm"
                             >
                                 <span className="material-symbols-outlined text-neutral-text/60">history</span>
@@ -396,7 +357,7 @@ export function NewDashboard() {
                             <h2 className="text-[11px] font-black text-neutral-text/40 tracking-widest uppercase">GESTIÓN RÁPIDA</h2>
                             <button className="text-[11px] font-black text-neutral-text/80 uppercase tracking-tighter">MOSTRAR MÁS</button>
                         </div>
-                        <div className="bg-[#003B2A] rounded-4xl h-28 flex overflow-hidden shadow-xl shadow-emerald-900/5 relative group cursor-pointer" onClick={() => setCurrentView("parking")}>
+                        <div className="bg-[#003B2A] rounded-4xl h-28 flex overflow-hidden shadow-xl shadow-emerald-900/5 relative group cursor-pointer" onClick={() => router.push("/dashboard/parking")}>
                              <div className="flex-1 p-6 flex flex-col justify-center">
                                  <div className="flex items-center space-x-3 mb-2">
                                      <div className="size-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white shadow-sm ring-2 ring-yellow-400/20">
@@ -422,7 +383,7 @@ export function NewDashboard() {
                             <div className="flex justify-between items-center mb-5">
                                 <h2 className="text-[11px] font-black text-neutral-text/40 tracking-widest uppercase">ACTIVIDAD RECIENTE</h2>
                                 <button
-                                    onClick={() => setCurrentView("history")}
+                                    onClick={() => router.push("/dashboard/history")}
                                     className="text-[11px] font-black text-neutral-text/80 uppercase tracking-tighter"
                                 >
                                     MOSTRAR MÁS
@@ -485,7 +446,7 @@ export function NewDashboard() {
                     <button
                         onClick={() => {
                             haptic("light")
-                            setCurrentView("home")
+                            router.push("/dashboard")
                         }}
                         className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${isHome ? 'text-primary-green' : 'text-neutral-text/20'}`}
                     >
@@ -495,7 +456,7 @@ export function NewDashboard() {
                     <button
                         onClick={() => {
                             haptic("light")
-                            setCurrentView("history")
+                            router.push("/dashboard/history")
                         }}
                         className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${isHistory ? 'text-primary-green' : 'text-neutral-text/20'}`}
                     >
@@ -507,7 +468,7 @@ export function NewDashboard() {
                         <button
                             onClick={() => {
                                 haptic("medium")
-                                setCurrentView("parking")
+                                router.push("/dashboard/parking")
                             }}
                             className="bg-primary-green size-16 rounded-[24px] shadow-2xl shadow-emerald-900/30 flex items-center justify-center active:scale-95 transition-all text-white border-2 border-white ring-8 ring-neutral-bg"
                         >
@@ -518,7 +479,7 @@ export function NewDashboard() {
                     <button
                         onClick={() => {
                             haptic("light")
-                            setCurrentView("wallet")
+                            router.push("/dashboard/wallet")
                         }}
                         className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${isWallet ? 'text-primary-green' : 'text-neutral-text/20'}`}
                     >
@@ -528,7 +489,7 @@ export function NewDashboard() {
                     <button
                         onClick={() => {
                             haptic("light")
-                            setCurrentView("menu")
+                            router.push("/dashboard/menu")
                         }}
                         className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${isMenu ? 'text-primary-green' : 'text-neutral-text/20'}`}
                     >
@@ -542,12 +503,11 @@ export function NewDashboard() {
                 <NotificationsPanel
                     open={showNotifications}
                     onOpenChange={setShowNotifications}
-                    onNavigate={(view) => setCurrentView(view as View)}
                 />
                 <WelcomeModal
                     open={showWelcomeModal}
                     onOpenChange={setShowWelcomeModal}
-                    onNavigateToVehicles={() => setCurrentView("vehicles")}
+                    onNavigateToVehicles={() => router.push("/dashboard/vehicles")}
                 />
             </div>
             <DesktopBlocker />

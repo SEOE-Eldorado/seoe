@@ -3,12 +3,10 @@
 import { useParking } from "@entities/parking-context"
 import { ActiveParkingCard } from "@widgets/active-parking-card"
 import { SimpleActiveParkingCard } from "@widgets/simple-active-parking-card"
+import { useRouter } from "next/navigation"
 
-interface ActiveParkingPageProps {
-    onBack: () => void
-}
-
-export function ActiveParkingPage({ onBack }: ActiveParkingPageProps) {
+export function ActiveParkingPage() {
+    const router = useRouter()
     const { activeSessions } = useParking()
 
     if (activeSessions.length === 0) {
@@ -22,7 +20,7 @@ export function ActiveParkingPage({ onBack }: ActiveParkingPageProps) {
                     Inicia un estacionamiento para verlo aquí.
                 </p>
                 <button
-                    onClick={onBack}
+                    onClick={() => router.back()}
                     className="w-full max-w-[200px] h-14 bg-primary-green text-white rounded-2xl font-black uppercase tracking-tight shadow-lg shadow-emerald-900/10 active:scale-95 transition-all"
                 >
                     Inicio
@@ -36,7 +34,7 @@ export function ActiveParkingPage({ onBack }: ActiveParkingPageProps) {
             {/* Top App Bar - Premium Light Style */}
             <div className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md px-6 py-5 justify-between border-b border-border/50">
                 <button
-                    onClick={onBack}
+                    onClick={() => router.back()}
                     className="flex size-11 shrink-0 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all"
                 >
                     <span className="material-symbols-outlined text-2xl">expand_more</span>

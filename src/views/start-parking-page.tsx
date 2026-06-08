@@ -11,15 +11,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@shared/ui/atoms/s
 
 import { Alert, AlertDescription, AlertTitle } from "@shared/ui/atoms/alert"
 import { CheckCircle2, ChevronLeft, ChevronRight, Car, MapPin, AlertCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface StartParkingPageProps {
-    onBack: () => void
     onSuccess: () => void
     initialLocation?: { latitude: number; longitude: number; address?: string } | null
 }
 
-export function StartParkingPage({ onBack, onSuccess, initialLocation }: StartParkingPageProps) {
-    const { user } = useAuth()
+export function StartParkingPage({ onSuccess, initialLocation }: StartParkingPageProps) {
+    const router = useRouter()
     const { vehicles, getDefaultVehicle } = useVehicles()
     const { startParking } = useParking()
 
@@ -182,7 +182,7 @@ export function StartParkingPage({ onBack, onSuccess, initialLocation }: StartPa
                 {/* Back button */}
                 <div className="absolute top-12 left-6 z-20">
                     <button
-                        onClick={onBack}
+                        onClick={() => router.back()}
                         className="flex items-center justify-center size-11 rounded-full bg-white shadow-lg text-neutral-text active:scale-90 transition-all"
                     >
                         <span className="material-symbols-outlined text-2xl">chevron_left</span>

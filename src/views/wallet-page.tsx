@@ -4,8 +4,10 @@ import { useAuth } from "@entities/auth-context"
 import { BalanceRechargeDialog } from "@widgets/dialogs/balance-recharge-dialog"
 import { TransactionHistory } from "@widgets/transaction-history"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
-export function WalletPage({ onBack }: { onBack: () => void }) {
+export function WalletPage() {
+    const router = useRouter()
     const { user, toggleAutoPayFines } = useAuth()
     const [showRechargeDialog, setShowRechargeDialog] = useState(false)
     const [showHistory, setShowHistory] = useState(false)
@@ -15,7 +17,7 @@ export function WalletPage({ onBack }: { onBack: () => void }) {
             {/* Premium Header */}
             <header className="shrink-0 flex items-center bg-white px-6 py-5 z-10 border-b border-border/50">
                 <button
-                    onClick={onBack}
+                    onClick={() => router.back()}
                     className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all"
                 >
                     <span className="material-symbols-outlined text-2xl">chevron_left</span>

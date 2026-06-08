@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useFines } from "@entities/fines-context"
 import { useAuth } from "@entities/auth-context"
+import { useRouter } from "next/navigation"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,11 +16,8 @@ import {
 } from "@shared/ui/atoms/alert-dialog"
 import { useHaptic } from "@shared/lib/hooks/use-haptic"
 
-interface FinesPageProps {
-  onBack: () => void
-}
-
-export function FinesPage({ onBack }: FinesPageProps) {
+export function FinesPage() {
+  const router = useRouter()
   const { fines, payFine, getPendingFines, getTotalPendingAmount } = useFines()
   const { user } = useAuth()
   const { trigger: haptic } = useHaptic()
@@ -65,7 +63,7 @@ export function FinesPage({ onBack }: FinesPageProps) {
                 <button
                     onClick={() => {
                         haptic("light")
-                        onBack()
+                        router.back()
                     }}
                     className="flex size-11 items-center justify-center rounded-full bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80 active:scale-90 transition-all"
                 >
