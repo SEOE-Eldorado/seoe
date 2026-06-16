@@ -39,20 +39,22 @@ import {
 } from "lucide-react"
 import { useEffect } from "react"
 
-import { PriceConfig } from "@widgets/admin/price-config"
-import { ZoneManagement } from "@widgets/admin/zone-management"
-import { StatsDashboard } from "@widgets/admin/stats-dashboard"
-import { UsersManagement } from "@widgets/admin/users-management"
-import { FinesManagement } from "@widgets/admin/fines-management"
-import { SpecialDaysManagement } from "@widgets/admin/special-days-management"
-import { InspectorManagement } from "@widgets/admin/inspector-management"
-import { ReportsPanel } from "@widgets/admin/reports-panel"
-import { NotificationsSystem } from "@widgets/admin/notifications-system"
-import { AuditLogsPanel } from "@widgets/admin/audit-logs-panel"
-import { PaymentGatewayCenter } from "@widgets/admin/payment-gateway-center"
-import { ExemptionsManagement } from "@widgets/admin/exemptions-management"
-import { AdminRolesManager } from "@widgets/admin/admin-roles-manager"
-import { InspectorHeatmap } from "@widgets/inspector-heatmap"
+import dynamic from "next/dynamic"
+
+const PriceConfig = dynamic(() => import("@widgets/admin/price-config").then(m => ({ default: m.PriceConfig })), { ssr: false })
+const ZoneManagement = dynamic(() => import("@widgets/admin/zone-management").then(m => ({ default: m.ZoneManagement })), { ssr: false })
+const StatsDashboard = dynamic(() => import("@widgets/admin/stats-dashboard").then(m => ({ default: m.StatsDashboard })), { ssr: false })
+const UsersManagement = dynamic(() => import("@widgets/admin/users-management").then(m => ({ default: m.UsersManagement })), { ssr: false })
+const FinesManagement = dynamic(() => import("@widgets/admin/fines-management").then(m => ({ default: m.FinesManagement })), { ssr: false })
+const SpecialDaysManagement = dynamic(() => import("@widgets/admin/special-days-management").then(m => ({ default: m.SpecialDaysManagement })), { ssr: false })
+const InspectorManagement = dynamic(() => import("@widgets/admin/inspector-management").then(m => ({ default: m.InspectorManagement })), { ssr: false })
+const ReportsPanel = dynamic(() => import("@widgets/admin/reports-panel").then(m => ({ default: m.ReportsPanel })), { ssr: false })
+const NotificationsSystem = dynamic(() => import("@widgets/admin/notifications-system").then(m => ({ default: m.NotificationsSystem })), { ssr: false })
+const AuditLogsPanel = dynamic(() => import("@widgets/admin/audit-logs-panel").then(m => ({ default: m.AuditLogsPanel })), { ssr: false })
+const PaymentGatewayCenter = dynamic(() => import("@widgets/admin/payment-gateway-center").then(m => ({ default: m.PaymentGatewayCenter })), { ssr: false })
+const ExemptionsManagement = dynamic(() => import("@widgets/admin/exemptions-management").then(m => ({ default: m.ExemptionsManagement })), { ssr: false })
+const AdminRolesManager = dynamic(() => import("@widgets/admin/admin-roles-manager").then(m => ({ default: m.AdminRolesManager })), { ssr: false })
+const InspectorHeatmap = dynamic(() => import("@widgets/inspector-heatmap").then(m => ({ default: m.InspectorHeatmap })), { ssr: false })
 
 const SidebarItem = ({ active, icon, label, onClick, badge, collapsed }: any) => {
     return (
