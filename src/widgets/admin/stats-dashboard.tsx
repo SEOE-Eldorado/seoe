@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { db } from "@shared/api/firebase"
-import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore"
+import { collection, query, where, onSnapshot, Timestamp, getDocs } from "firebase/firestore"
 import { Card, CardContent } from "@shared/ui/atoms/card"
 import { useSettings } from "@entities/settings-context"
 import {
@@ -43,6 +43,66 @@ export function StatsDashboard() {
         topZone: null
     })
     const [loading, setLoading] = useState(true)
+    const [trends, setTrends] = useState<Record<string, { value: string; up: boolean }>>({})
+
+    // Fetch yesterday/last-month data for trend comparison
+    useEffect(() => {
+        const fetchTrends = async () => {
+            const now = new Date()
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            const startOfYesterday = new Date(startOfDay.getTime() - 86400000)
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+            const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+            const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+
+            try {
+                // Yesterday sessions & revenue
+                const yesterdayQuery = query(
+                    collection(db, "parking_sessions"),
+                    where("startTime", ">=", Timestamp.fromDate(startOfYesterday)),
+                    where("startTime", "<", Timestamp.fromDate(startOfDay))
+                )
+                const yesterdaySnap = await getDocs(yesterdayQuery)
+                let yesterdayRevenue = 0
+                let yesterdaySessions = 0
+                yesterdaySnap.forEach(doc => {
+                    const d = doc.data()
+                    yesterdayRevenue += d.cost || 0
+                    yesterdaySessions++
+                })
+
+                // Yesterday fines
+                const yesterdayFinesQuery = query(
+                    collection(db, "fines"),
+                    where("issuedAt", ">=", Timestamp.fromDate(startOfYesterday)),
+                    where("issuedAt", "<", Timestamp.fromDate(startOfDay))
+                )
+                const yesterdayFinesSnap = await getDocs(yesterdayFinesQuery)
+                const yesterdayFines = yesterdayFinesSnap.size
+
+                // Last month revenue
+                const lastMonthQuery = query(
+                    collection(db, "parking_sessions"),
+                    where("startTime", ">=", Timestamp.fromDate(startOfLastMonth)),
+                    where("startTime", "<=", Timestamp.fromDate(endOfLastMonth))
+                )
+                const lastMonthSnap = await getDocs(lastMonthQuery)
+                let lastMonthRevenue = 0
+                lastMonthSnap.forEach(doc => { lastMonthRevenue += doc.data().cost || 0 })
+
+                setTrends({
+                    sessions: computeTrend(stats.sessionsToday, yesterdaySessions),
+                    revenue: computeTrend(stats.todayRevenue, yesterdayRevenue),
+                    monthRevenue: computeTrend(stats.monthRevenue, lastMonthRevenue),
+                    fines: computeTrend(stats.todayFines, yesterdayFines, true),
+                    users: { value: `+${stats.totalUsers}`, up: true },
+                })
+            } catch (e) {
+                console.error("Trend fetch error:", e)
+            }
+        }
+        if (!loading) fetchTrends()
+    }, [loading, stats.sessionsToday, stats.todayRevenue, stats.monthRevenue, stats.todayFines, stats.totalUsers])
 
     useEffect(() => {
         const now = new Date()
@@ -136,6 +196,14 @@ export function StatsDashboard() {
         }
     }, [])
 
+    const computeTrend = (current: number, previous: number, invert: boolean = false): { value: string; up: boolean } => {
+        if (previous === 0) return { value: current > 0 ? "+100%" : "0%", up: current > 0 }
+        const diff = ((current - previous) / previous) * 100
+        const up = invert ? diff <= 0 : diff >= 0
+        const sign = diff >= 0 ? "+" : ""
+        return { value: `${sign}${diff.toFixed(1)}%`, up }
+    }
+
     const statCards = [
         {
             label: "Sesiones Activas",
@@ -144,8 +212,8 @@ export function StatsDashboard() {
             color: "text-emerald-600",
             borderColor: "border-emerald-100",
             iconBg: "bg-emerald-50",
-            trend: "+2.5%",
-            trendUp: true
+            trend: trends.sessions?.value || "...",
+            trendUp: trends.sessions?.up ?? true
         },
         {
             label: "Recaudación Hoy",
@@ -155,8 +223,8 @@ export function StatsDashboard() {
             borderColor: "border-blue-100",
             iconBg: "bg-blue-50",
             prefix: "$",
-            trend: "+12%",
-            trendUp: true
+            trend: trends.revenue?.value || "...",
+            trendUp: trends.revenue?.up ?? true
         },
         {
             label: "Monto Mes",
@@ -166,8 +234,8 @@ export function StatsDashboard() {
             borderColor: "border-violet-100",
             iconBg: "bg-violet-50",
             prefix: "$",
-            trend: "+8.4%",
-            trendUp: true
+            trend: trends.monthRevenue?.value || "...",
+            trendUp: trends.monthRevenue?.up ?? true
         },
         {
             label: "Multas Hoy",
@@ -176,8 +244,8 @@ export function StatsDashboard() {
             color: "text-amber-600",
             borderColor: "border-amber-100",
             iconBg: "bg-amber-50",
-            trend: "-4%",
-            trendUp: false
+            trend: trends.fines?.value || "...",
+            trendUp: trends.fines?.up ?? false
         },
         {
             label: "Usuarios Totales",
@@ -186,7 +254,7 @@ export function StatsDashboard() {
             color: "text-slate-900",
             borderColor: "border-slate-100",
             iconBg: "bg-slate-50",
-            trend: "+5",
+            trend: trends.users?.value || "...",
             trendUp: true
         },
         {
@@ -196,8 +264,8 @@ export function StatsDashboard() {
             color: "text-rose-600",
             borderColor: "border-rose-100",
             iconBg: "bg-rose-50",
-            trend: "+18%",
-            trendUp: true
+            trend: trends.sessions?.value || "...",
+            trendUp: trends.sessions?.up ?? true
         }
     ]
 

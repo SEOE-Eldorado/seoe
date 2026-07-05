@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useAllUsers, useUpdateUser } from "@shared/api/admin-users"
+import { auth, db } from "@shared/api/firebase"
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { doc, setDoc, Timestamp } from "firebase/firestore"
 import { Card, CardContent } from "@shared/ui/atoms/card"
 import { Button } from "@shared/ui/atoms/button"
 import { Input } from "@shared/ui/atoms/input"
@@ -36,7 +39,8 @@ import {
     Phone,
     Mail,
     Calendar,
-    ArrowUpDown
+    ArrowUpDown,
+    Info
 } from "lucide-react"
 import { useToast } from "@shared/ui/atoms/use-toast"
 import type { User } from "@shared/types"
@@ -55,6 +59,43 @@ export function UsersManagement() {
     const [editBalance, setEditBalance] = useState("")
     const [editRole, setEditRole] = useState<string>("")
     const [saving, setSaving] = useState(false)
+
+    // New user dialog
+    const [isNewUserOpen, setIsNewUserOpen] = useState(false)
+    const [newUserName, setNewUserName] = useState("")
+    const [newUserEmail, setNewUserEmail] = useState("")
+    const [newUserPassword, setNewUserPassword] = useState("")
+    const [newUserRole, setNewUserRole] = useState<string>("user")
+    const [creating, setCreating] = useState(false)
+
+    const handleCreateUser = async () => {
+        if (!newUserName || !newUserEmail || !newUserPassword) {
+            toast({ title: "Error", description: "Completá todos los campos.", variant: "destructive" })
+            return
+        }
+        setCreating(true)
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword)
+            await setDoc(doc(db, "users", cred.user.uid), {
+                name: newUserName,
+                email: newUserEmail,
+                role: newUserRole,
+                balance: 0,
+                blocked: false,
+                createdAt: Timestamp.now(),
+            })
+            toast({ title: "Usuario Creado", description: `${newUserName} se registró correctamente.` })
+            setIsNewUserOpen(false)
+            setNewUserName("")
+            setNewUserEmail("")
+            setNewUserPassword("")
+            setNewUserRole("user")
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message || "No se pudo crear el usuario.", variant: "destructive" })
+        } finally {
+            setCreating(false)
+        }
+    }
 
     // Filter users when search or role changes
     useEffect(() => {
@@ -170,7 +211,7 @@ export function UsersManagement() {
                     <h3 className="text-xl font-bold text-slate-900 tracking-tight">Gestión de Usuarios</h3>
                     <p className="text-sm text-slate-500 font-medium">Administra cuentas, roles y saldos de la plataforma</p>
                 </div>
-                <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold rounded-lg h-10 px-4 gap-2">
+                <Button onClick={() => setIsNewUserOpen(true)} className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold rounded-lg h-10 px-4 gap-2">
                     <UserIcon className="size-4" />
                     Nuevo Usuario
                 </Button>
@@ -425,6 +466,63 @@ export function UsersManagement() {
                             className="flex-1 h-11 rounded-lg font-bold bg-[#f97316] hover:bg-orange-600 text-white border-none shadow-sm"
                         >
                             {saving ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* New User Dialog */}
+            <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
+                <DialogContent className="max-w-md p-0 overflow-hidden rounded-xl border border-slate-200 shadow-2xl">
+                    <div className="p-6 pb-0">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
+                                Nuevo Usuario
+                            </DialogTitle>
+                            <DialogDescription className="text-sm font-medium text-slate-500">
+                                Crear una cuenta nueva en la plataforma
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Nombre Completo</Label>
+                            <Input value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Ej. Juan Pérez" className="h-11 rounded-lg border-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Email</Label>
+                            <Input type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="usuario@email.com" className="h-11 rounded-lg border-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Contraseña</Label>
+                            <Input type="password" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className="h-11 rounded-lg border-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Rol</Label>
+                            <Select value={newUserRole} onValueChange={setNewUserRole}>
+                                <SelectTrigger className="h-11 rounded-lg border-slate-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-lg">
+                                    <SelectItem value="user">Usuario</SelectItem>
+                                    <SelectItem value="inspector">Inspector</SelectItem>
+                                    <SelectItem value="admin">Administrador</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="p-3 rounded-lg bg-blue-50 border border-blue-100 flex items-start gap-3">
+                            <Info className="size-4 text-blue-500 shrink-0 mt-0.5" />
+                            <p className="text-[11px] font-medium text-blue-800 leading-normal">
+                                Se enviará un email de verificación al usuario. El saldo inicial será de $0.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+                        <Button variant="outline" onClick={() => setIsNewUserOpen(false)} className="flex-1 h-11 rounded-lg font-bold text-slate-600 border-slate-200">
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleCreateUser} disabled={creating} className="flex-1 h-11 rounded-lg font-bold bg-[#f97316] hover:bg-orange-600 text-white border-none shadow-sm">
+                            {creating ? "Creando..." : "Crear Usuario"}
                         </Button>
                     </div>
                 </DialogContent>

@@ -27,7 +27,7 @@ import {
 } from "lucide-react"
 
 export function ZoneManagement() {
-    const { zones, addZone, updateZone } = useSettings()
+    const { zones, addZone, updateZone, deleteZone } = useSettings()
     const [searchTerm, setSearchTerm] = useState("")
 
     // View State
@@ -318,6 +318,11 @@ export function ZoneManagement() {
                                         <Edit2 className="size-3.5" />
                                     </button>
                                     <button
+                                        onClick={async () => {
+                                            if (confirm(`¿Eliminar la zona "${zone.name}"? Esta acción no se puede deshacer.`)) {
+                                                await deleteZone(zone.id)
+                                            }
+                                        }}
                                         className="size-8 rounded-[1.25px] bg-red-50/50 text-red-300 hover:text-red-600 hover:bg-red-50 border border-red-50 flex items-center justify-center transition-colors shadow-none"
                                     >
                                         <Trash2 className="size-3.5" />

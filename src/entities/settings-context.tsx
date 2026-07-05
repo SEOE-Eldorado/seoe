@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react"
 import { db } from "@shared/api/firebase"
-import { doc, updateDoc, collection, getDocs, setDoc, getDoc } from "firebase/firestore"
+import { doc, updateDoc, collection, getDocs, setDoc, getDoc, deleteDoc } from "firebase/firestore"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
 export interface SystemSettings {
@@ -55,6 +55,7 @@ interface SettingsContextType {
     updateSettings: (newSettings: Partial<SystemSettings>) => Promise<void>
     addZone: (zone: Omit<Zone, "id">) => Promise<void>
     updateZone: (id: string, zone: Partial<Zone>) => Promise<void>
+    deleteZone: (id: string) => Promise<void>
     isOperatingTime: (date?: Date) => boolean
     isLocationInAnyZone: (lat?: number, lng?: number) => boolean
     getZoneAtLocation: (lat?: number, lng?: number) => Zone | null
@@ -159,6 +160,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         mutationFn: async ({ id, zoneData }: { id: string, zoneData: Partial<Zone> }) => {
             const zoneRef = doc(db, "zones", id)
             await updateDoc(zoneRef, zoneData)
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['zones'] })
+    })
+
+    const deleteZoneMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const zoneRef = doc(db, "zones", id)
+            await deleteDoc(zoneRef)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['zones'] })
     })
@@ -272,6 +281,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             updateSettings: async (newSettings) => await updateSettingsMutation.mutateAsync(newSettings),
             addZone: async (zone) => await addZoneMutation.mutateAsync(zone),
             updateZone: async (id, zone) => await updateZoneMutation.mutateAsync({ id, zoneData: zone }),
+            deleteZone: async (id) => await deleteZoneMutation.mutateAsync(id),
             isOperatingTime,
             isLocationInAnyZone,
             getZoneAtLocation,
