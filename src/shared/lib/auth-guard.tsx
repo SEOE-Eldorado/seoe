@@ -5,41 +5,115 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@entities/auth-context"
 import { useTranslations } from "next-intl"
 
-const PUBLIC_ROUTES = ["/login", "/login/", "/register", "/register/", "/forgot-password", "/forgot-password/", "/iniciar", "/iniciar/", "/payment/callback", "/payment/callback/"]
+// Rutas públicas (no requieren login)
+const PUBLIC_ROUTES = [
+  "/login", "/login/",
+  "/register", "/register/",
+  "/forgot-password", "/forgot-password/",
+  "/iniciar", "/iniciar/",
+  "/payment/callback", "/payment/callback/",
+  // Logins específicos por rol
+  "/seller/login", "/seller/login/",
+  "/inspector/login", "/inspector/login/",
+  "/admin/login", "/admin/login/",
+]
+
+// Mapeo: ruta de login → ruta destino según rol
+const LOGIN_REDIRECTS: Record<string, Record<string, string>> = {
+  "/login": {
+    admin: "/dashboard/admin",
+    inspector: "/inspector",
+    seller: "/seller",
+    user: "/dashboard",
+  },
+  "/seller/login": {
+    seller: "/seller",
+    admin: "/seller",
+  },
+  "/inspector/login": {
+    inspector: "/inspector",
+    admin: "/inspector",
+  },
+  "/admin/login": {
+    admin: "/dashboard/admin",
+  },
+}
+
+// Rutas protegidas por rol
+const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
+  "/seller": ["seller", "admin"],
+  "/inspector": ["inspector", "admin"],
+  "/dashboard/admin": ["admin"],
+}
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const isPublic = PUBLIC_ROUTES.includes(pathname)
-  const isInspectorApp = process.env.NEXT_PUBLIC_APP_ENV === "inspector"
   const t = useTranslations("loading")
-  console.log("[AuthGuard] loading:", loading, "user:", !!user, "pathname:", pathname, "isPublic:", isPublic)
 
   useEffect(() => {
     if (loading) return
 
+    // Usuario no logueado en ruta protegida → login
     if (!user && !isPublic) {
-      router.replace("/login")
+      // Detectar a qué login ir según la ruta actual
+      if (pathname.startsWith("/seller")) {
+        router.replace("/seller/login")
+      } else if (pathname.startsWith("/inspector")) {
+        router.replace("/inspector/login")
+      } else if (pathname.startsWith("/dashboard/admin")) {
+        router.replace("/admin/login")
+      } else {
+        router.replace("/login")
+      }
       return
     }
 
+    // Usuario logueado en ruta pública (login) → redirigir según rol y ruta
     if (user && isPublic) {
-      if (isInspectorApp) {
-        router.replace("/inspector")
-      } else if (user.role === "admin") {
+      const redirectMap = LOGIN_REDIRECTS[pathname]
+      if (redirectMap) {
+        const role = user.role || "user"
+        const target = redirectMap[role]
+        if (target) {
+          router.replace(target)
+        } else {
+          // Rol no permitido para este login → unauthorized
+          router.replace("/unauthorized")
+        }
+        return
+      }
+      // Si es una ruta pública pero no de login (register, forgot-password, etc)
+      // y el usuario ya está logueado, mandar al dashboard según rol
+      const role = user.role || "user"
+      if (role === "admin") {
         router.replace("/dashboard/admin")
+      } else if (role === "inspector") {
+        router.replace("/inspector")
+      } else if (role === "seller") {
+        router.replace("/seller")
       } else {
         router.replace("/dashboard")
       }
       return
     }
 
-    if (user && isInspectorApp && user.role !== "admin" && user.role !== "inspector" && pathname !== "/unauthorized") {
-      router.replace("/unauthorized")
-      return
+    // Usuario logueado en ruta protegida → validar rol
+    if (user && !isPublic) {
+      const role = user.role || "user"
+      for (const [route, allowedRoles] of Object.entries(ROLE_PROTECTED_ROUTES)) {
+        if (pathname.startsWith(route)) {
+          if (!allowedRoles.includes(role)) {
+            router.replace("/unauthorized")
+            return
+          }
+          break
+        }
+      }
     }
-  }, [user, loading, pathname, isPublic, isInspectorApp, router])
+  }, [user, loading, pathname, isPublic, router])
 
   if (loading) {
     return (
