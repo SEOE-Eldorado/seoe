@@ -26,17 +26,17 @@ COPY . .
 # COPY .env.production.local .env.production.local
 # COPY .env.local .env.local
 
-# Note: We disable telemetry during build
+# Note that we disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN \
   if [ -f yarn.lock ]; then \
     if [ "$BUILD_MODE" = "seller" ]; then yarn run build:seller; \
-    elif [ "$BUILD_MODE" = "inspector" ]; then yarn run build:mobile; \
+    elif [ "$BUILD_MODE" = "inspector" ]; then yarn run build:inspector; \
     else yarn run build; fi; \
   elif [ -f package-lock.json ]; then \
     if [ "$BUILD_MODE" = "seller" ]; then npm run build:seller; \
-    elif [ "$BUILD_MODE" = "inspector" ]; then npm run build:mobile; \
+    elif [ "$BUILD_MODE" = "inspector" ]; then npm run build:inspector; \
     else npm run build; fi; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
   else echo "Lockfile not found." && exit 1; \
