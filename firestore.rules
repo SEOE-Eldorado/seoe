@@ -169,8 +169,8 @@ service cloud.firestore {
     }
 
     match /payments/{paymentId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow create: if isAuth();
+      allow read: if isOwner(resource.data.userId) || isAdmin() || resource.data.userId == null; // Guest payments are public-read
+      allow create: if isAuth() || resource.data.userId == null; // Guest payments can be created server-side
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }

@@ -4,21 +4,60 @@ import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@shared/ui/atoms/card"
 import { Button } from "@shared/ui/atoms/button"
-import { CheckCircle2, XCircle } from "lucide-react"
+import { CheckCircle2, XCircle, Car } from "lucide-react"
 
 export default function PaymentCallbackPage() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const status = searchParams.get("status")
+    const paymentId = searchParams.get("payment_id")
+    const type = searchParams.get("type")
     const [countdown, setCountdown] = useState(5)
 
     const isSuccess = status === "success"
+    const isGuestParking = type === "guest_parking"
+
+    // Fetch parking details from payment if guest
+    const [parkingInfo, setParkingInfo] = useState<{
+        plate?: string
+        zone?: string
+        hours?: number
+        cost?: number
+    } | null>(null)
+
+    useEffect(() => {
+        if (!isGuestParking || !isSuccess || !paymentId) return
+
+        const fetchPayment = async () => {
+            try {
+                const { doc, getDoc } = await import("firebase/firestore")
+                const { db } = await import("@shared/api/firebase")
+                const paymentSnap = await getDoc(doc(db, "payments", paymentId))
+                if (paymentSnap.exists()) {
+                    const data = paymentSnap.data()
+                    if (data.guestParkingData) {
+                        setParkingInfo({
+                            plate: data.guestParkingData.plate,
+                            zone: data.guestParkingData.zone,
+                            hours: data.guestParkingData.hours,
+                            cost: data.amount,
+                        })
+                    }
+                }
+            } catch (e) {
+                console.error("Error fetching payment details:", e)
+            }
+        }
+
+        fetchPayment()
+    }, [isGuestParking, isSuccess, paymentId])
 
     useEffect(() => {
         if (countdown === 0) {
-            router.push("/")
+            const destination = isGuestParking ? (isSuccess ? "/iniciar" : "/iniciar?canceled=true") : "/"
+            router.push(destination)
         }
-    }, [countdown, router])
+    }, [countdown, router, isGuestParking, isSuccess])
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -40,20 +79,45 @@ export default function PaymentCallbackPage() {
                         )}
                     </div>
                     <CardTitle className="text-2xl">
-                        {isSuccess ? "¡Pago Exitoso!" : "Pago Cancelado o Fallido"}
+                        {isSuccess
+                            ? isGuestParking
+                                ? "¡Estacionamiento Iniciado!"
+                                : "¡Pago Exitoso!"
+                            : "Pago Cancelado o Fallido"}
                     </CardTitle>
                     <CardDescription>
                         {isSuccess
-                            ? "Tu saldo ha sido acreditado correctamente."
+                            ? isGuestParking
+                                ? "Tu estacionamiento ya está activo."
+                                : "Tu saldo ha sido acreditado correctamente."
                             : "La operación no pudo completarse."}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {isSuccess && isGuestParking && parkingInfo && (
+                        <div className="bg-green-50 rounded-xl p-5 border border-green-200 space-y-3 text-left">
+                            <div className="flex items-center gap-3">
+                                <Car className="size-5 text-green-600" />
+                                <span className="font-black text-lg text-green-800 tracking-wider">
+                                    {parkingInfo.plate}
+                                </span>
+                            </div>
+                            <div className="text-sm text-green-700 space-y-1">
+                                <p><span className="font-medium">Zona:</span> {parkingInfo.zone}</p>
+                                <p><span className="font-medium">Duración:</span> {parkingInfo.hours}h</p>
+                                <p><span className="font-medium">Abonado:</span> ${parkingInfo.cost?.toLocaleString("es-AR")}</p>
+                            </div>
+                        </div>
+                    )}
+
                     <p className="text-sm text-muted-foreground">
-                        Serás redirigido al inicio en {countdown} segundos...
+                        Serás redirigido{isGuestParking ? " al inicio" : " al inicio"} en {countdown} segundos...
                     </p>
-                    <Button onClick={() => router.push("/")} className="w-full">
-                        Volver al Inicio
+                    <Button
+                        onClick={() => router.push(isGuestParking ? (isSuccess ? "/iniciar" : "/iniciar?canceled=true") : "/")}
+                        className="w-full"
+                    >
+                        {isGuestParking ? "Volver a Inicio" : "Volver al Inicio"}
                     </Button>
                 </CardContent>
             </Card>

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useAuth } from "@entities/auth-context"
 import { auth, db } from "@shared/api/firebase"
 import { doc, getDoc } from "firebase/firestore"
-import { Search, UserCheck, DollarSign, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
+import { Search, UserCheck, DollarSign, Loader2, CheckCircle2, AlertCircle, Wallet } from "lucide-react"
 
 export function SellerAddBalance() {
   const { user } = useAuth()

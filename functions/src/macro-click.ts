@@ -97,6 +97,108 @@ export const createMacroClickPayment = onCall(async (request: CallableRequest<Ma
 });
 
 /**
+ * Guest Parking Payment — Sin registro ni autenticación.
+ * HTTP endpoint (onRequest) para que la página pública /iniciar cree un pago
+ * por estacionamiento sin necesidad de cuenta de usuario.
+ *
+ * POST body: { plate, zone, hours, costPerHour, address? }
+ * Returns: { url, fields, paymentId, amount }
+ */
+export const createGuestParkingPayment = onRequest({ cors: true }, async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method Not Allowed' });
+        return;
+    }
+
+    const { plate, zone, hours, costPerHour, address } = req.body ?? {};
+
+    // ── Validation ───────────────────────────────────────────────────
+    if (!plate || typeof plate !== 'string') {
+        res.status(400).json({ error: 'Patente requerida' });
+        return;
+    }
+    if (!zone || typeof zone !== 'string') {
+        res.status(400).json({ error: 'Zona requerida' });
+        return;
+    }
+    if (!hours || typeof hours !== 'number' || hours < 0.5 || hours > 12) {
+        res.status(400).json({ error: 'Horas inválidas (0.5-12)' });
+        return;
+    }
+    if (!costPerHour || typeof costPerHour !== 'number' || costPerHour <= 0) {
+        res.status(400).json({ error: 'Costo por hora inválido' });
+        return;
+    }
+
+    const cleanPlate = plate.toUpperCase().replace(/\s/g, '');
+    const cost = Math.round(hours * costPerHour);
+    const amountStr = (cost * 100).toFixed(0);
+
+    // ── Create payment doc (type: guest_parking) ─────────────────────
+    const paymentRef = db.collection('payments').doc();
+    const transactionId = paymentRef.id;
+
+    await paymentRef.set({
+        userId: null,
+        type: 'guest_parking',
+        amount: cost,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        gateway: 'macro_click',
+        transactionId,
+        description: `Estacionamiento invitado - ${cleanPlate}`,
+        guestParkingData: {
+            plate: cleanPlate,
+            zone,
+            address: address || 'No especificada',
+            hours,
+            costPerHour,
+        },
+    });
+
+    // ── Build Macro Click fields ──────────────────────────────────────
+    const baseUrl = req.headers.origin || 'http://localhost:3000';
+    const callbackSuccess = `${baseUrl}/payment/callback?status=success&payment_id=${transactionId}&type=guest_parking`;
+    const callbackCancel = `${baseUrl}/payment/callback?status=cancel&payment_id=${transactionId}&type=guest_parking`;
+
+    let encMonto: string, encSuccess: string, encCancel: string, encBranch: string;
+    try {
+        encMonto = encryptString(amountStr, MACRO_CLICK_SECRET_KEY);
+        encSuccess = encryptString(callbackSuccess, MACRO_CLICK_SECRET_KEY);
+        encCancel = encryptString(callbackCancel, MACRO_CLICK_SECRET_KEY);
+        encBranch = encryptString('', MACRO_CLICK_SECRET_KEY);
+    } catch (e) {
+        console.error('Encryption error', e);
+        res.status(500).json({ error: 'Error encriptando datos de pago' });
+        return;
+    }
+
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ip = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0]?.trim()) || req.socket.remoteAddress || '127.0.0.1';
+    const hashString = `${ip}${MACRO_CLICK_SECRET_KEY}${MACRO_CLICK_COMMERCE_ID}${''}${amountStr}`;
+    const hash = crypto.createHash('sha256').update(hashString).digest('hex');
+
+    const fields: Record<string, string> = {
+        CallbackSuccess: encSuccess,
+        CallbackCancel: encCancel,
+        Comercio: MACRO_CLICK_COMMERCE_ID,
+        SucursalComercio: encBranch,
+        TransaccionComercioId: transactionId,
+        Monto: encMonto,
+        Hash: hash,
+        'Producto[0]': `Estacionamiento ${cleanPlate}`,
+        'MontoProducto[0]': amountStr,
+    };
+
+    res.status(200).json({
+        url: BASE_URL,
+        fields,
+        paymentId: transactionId,
+        amount: cost,
+    });
+});
+
+/**
  * Handle POST notifications from Macro Click.
  * This function should be configured as the Notification URL in Macro Click panel.
  */
@@ -181,8 +283,38 @@ export const handleMacroClickWebhook = onRequest(async (req, res) => {
                     rawWebhook: data
                 });
 
-                // 2. Update User Balance (if user exists)
-                if (userRef && userDoc && userDoc.exists) {
+                // 2. Handle guest_parking — create session, no user balance
+                const paymentType = paymentData?.type;
+                if (paymentType === 'guest_parking') {
+                    const guestData = paymentData?.guestParkingData;
+                    if (guestData) {
+                        const startTime = admin.firestore.Timestamp.now();
+                        const endTime = admin.firestore.Timestamp.fromMillis(
+                            Date.now() + (guestData.hours * 60 * 60 * 1000)
+                        );
+
+                        const sessionRef = db.collection('parking_sessions').doc();
+                        t.set(sessionRef, {
+                            userId: null,
+                            vehicleId: null,
+                            vehiclePlate: guestData.plate,
+                            zone: guestData.zone,
+                            address: guestData.address || 'No especificada',
+                            startTime,
+                            endTime,
+                            cost: Number(paymentData?.amount) || 0,
+                            costPerHour: guestData.costPerHour,
+                            status: 'active',
+                            source: 'guest',
+                            paymentId: transactionId,
+                        });
+
+                        console.log(`[Webhook] Guest parking session ${sessionRef.id} created for plate ${guestData.plate}`);
+                    }
+                }
+
+                // 3. Update User Balance (if user exists and not guest)
+                if (paymentType !== 'guest_parking' && userRef && userDoc && userDoc.exists) {
                     const amountToAdd = Number(paymentData?.amount) || 0;
                     const newBalance = currentBalance + amountToAdd;
 
@@ -192,7 +324,7 @@ export const handleMacroClickWebhook = onRequest(async (req, res) => {
                         balance: newBalance
                     });
 
-                    // 3. Create Notification
+                    // 4. Create Notification
                     const notifRef = db.collection('notifications').doc();
                     t.set(notifRef, {
                         userId: userId,

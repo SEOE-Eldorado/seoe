@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@entities/auth-context"
 import { useTranslations } from "next-intl"
 
-const PUBLIC_ROUTES = ["/login", "/login/", "/register", "/register/", "/forgot-password", "/forgot-password/"]
+const PUBLIC_ROUTES = ["/login", "/login/", "/register", "/register/", "/forgot-password", "/forgot-password/", "/iniciar", "/iniciar/", "/payment/callback", "/payment/callback/"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
