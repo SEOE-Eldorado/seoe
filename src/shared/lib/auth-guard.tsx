@@ -25,7 +25,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     if (user && isPublic) {
-      router.replace(isInspectorApp ? "/inspector" : "/dashboard")
+      if (isInspectorApp) {
+        router.replace("/inspector")
+      } else if (user.role === "admin") {
+        router.replace("/dashboard/admin")
+      } else {
+        router.replace("/dashboard")
+      }
       return
     }
 

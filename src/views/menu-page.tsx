@@ -17,6 +17,8 @@ export function MenuPage() {
         { id: "fines", icon: "fi-sr-file-circle-exclamation", label: t("fines"), description: t("fines_desc") },
     ]
 
+    const isAdmin = user?.role === "admin"
+
     return (
         <div className="flex h-dvh w-full flex-col bg-neutral-bg text-neutral-text font-display overflow-hidden relative no-scrollbar">
             {/* Premium Header */}
@@ -118,6 +120,26 @@ export function MenuPage() {
                         </button>
                     </div>
                 </section>
+
+                {/* Admin Panel Access */}
+                {isAdmin && (
+                    <section>
+                        <h2 className="text-[10px] font-black text-violet-500 uppercase tracking-[0.2em] mb-5 px-1">Administración</h2>
+                        <button
+                            onClick={() => router.push("/dashboard/admin")}
+                            className="w-full flex items-center gap-5 p-6 rounded-[8px] bg-violet-50 shadow-sm border border-violet-200 hover:bg-violet-100/50 transition-all cursor-pointer group"
+                        >
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 group-hover:bg-violet-200 transition-all border border-violet-200">
+                                <span className="material-symbols-outlined text-2xl">shield_person</span>
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="text-sm font-black text-violet-700 tracking-tight uppercase">Panel Admin</p>
+                                <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest mt-1">Gestión completa del sistema</p>
+                            </div>
+                            <span className="material-symbols-outlined text-violet-300 group-hover:text-violet-500 transition-all">chevron_right</span>
+                        </button>
+                    </section>
+                )}
 
                 {/* Logout Button */}
                 <section className="pt-4">
