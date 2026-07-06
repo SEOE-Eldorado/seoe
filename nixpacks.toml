@@ -5,7 +5,9 @@ nixPkgs = ["nodejs_22", "npm-10_x"]
 commands = ["npm ci"]
 
 [phases.build]
-commands = ["npm run build"]
+commands = [
+  "if [ \"$BUILD_MODE\" = \"seller\" ]; then npm run build:seller; elif [ \"$BUILD_MODE\" = \"inspector\" ]; then npm run build:inspector; else npm run build; fi"
+]
 
 [start]
 cmd = "npm run start"
