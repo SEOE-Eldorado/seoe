@@ -13,7 +13,8 @@ import {
     CalendarDays, 
     MapPin, 
     Settings,
-    History 
+    History,
+    Store 
 } from "lucide-react"
 
 export const ADMIN_PERMISSIONS = [
@@ -31,6 +32,7 @@ export const ADMIN_PERMISSIONS = [
     { id: "zones", label: "Zonas de Estacionamiento", icon: <MapPin className="size-4" /> },
     { id: "config", label: "Tarifas y Precios", icon: <Settings className="size-4" /> },
     { id: "history", label: "Historial", icon: <History className="size-4" /> },
+    { id: "sellers", label: "Gestión de Vendedores", icon: <Store className="size-4" /> },
 ] as const;
 
 export const SYSTEM_PERMISSIONS = ADMIN_PERMISSIONS;

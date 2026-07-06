@@ -15,10 +15,11 @@ export const dynamic = 'force-dynamic'
 
 export function generateMetadata(): Metadata {
   const isInspector = process.env.NEXT_PUBLIC_APP_ENV === 'inspector'
+  const isSeller = process.env.NEXT_PUBLIC_APP_ENV === 'seller'
 
   return {
-    title: isInspector ? "SEOE Inspector" : "SEOE Wallet",
-    description: isInspector ? "Plataforma de control y fiscalización" : "Sistema inteligente de gestión de estacionamiento",
+    title: isInspector ? "SEOE Inspector" : isSeller ? "SEOE Vendedor" : "SEOE Wallet",
+    description: isInspector ? "Plataforma de control y fiscalización" : isSeller ? "Punto de venta de estacionamiento" : "Sistema inteligente de gestión de estacionamiento",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",

@@ -672,4 +672,118 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
     }
 });
 
+// --- SETUP: First Admin (one-time) ---
+// Esta función NO requiere auth previo.
+// Solo se puede usar UNA VEZ: cuando no hay ningún admin en el sistema.
+export const setupFirstAdmin = onCall({
+    maxInstances: 1,
+    cors: true
+}, async (request) => {
+    // 1. Verificar que NO exista un admin todavía
+    const adminSnapshot = await db.collection('users')
+        .where('role', '==', 'admin')
+        .limit(1)
+        .get();
+
+    if (!adminSnapshot.empty) {
+        throw new HttpsError('failed-precondition', 'Ya existe un admin. Usá createAdminUserV1.');
+    }
+
+    // 2. Validar input
+    const { email } = request.data;
+    if (!email || typeof email !== 'string') {
+        throw new HttpsError('invalid-argument', 'Email es requerido');
+    }
+
+    // 3. Si está autenticado, usamos su UID; si no, buscamos por email
+    let uid: string;
+
+    if (request.auth) {
+        uid = request.auth.uid;
+    } else {
+        // Buscar usuario por email (requiere Admin SDK)
+        try {
+            const userRecord = await admin.auth().getUserByEmail(email);
+            uid = userRecord.uid;
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+                throw new HttpsError('not-found', `Usuario ${email} no encontrado. Registrate primero.`);
+            }
+            throw error;
+        }
+    }
+
+    // 4. Verificar que el email coincida si está autenticado
+    if (request.auth && request.auth.token.email !== email) {
+        throw new HttpsError('permission-denied', 'El email autenticado no coincide');
+    }
+
+    // 5. Promover a admin
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        await userRef.set({
+            name: email.split('@')[0],
+            email,
+            phone: '',
+            role: 'admin',
+            balance: 0,
+            autoPayFines: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    } else {
+        await userRef.update({
+            role: 'admin',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    }
+
+    // 6. Inicializar settings por defecto
+    const settingsRef = db.collection('settings').doc('general');
+    const settingsDoc = await settingsRef.get();
+    if (!settingsDoc.exists) {
+        await settingsRef.set({
+            systemName: 'SEOE - Sistema de Estacionamiento',
+            currency: 'ARS',
+            defaultBasePrice: 50,
+            defaultPricePerHour: 80,
+            maxHoursPerSession: 12,
+            gracePeriodMinutes: 5,
+            fineAmount: 1500,
+            businessHoursStart: '08:00',
+            businessHoursEnd: '18:00',
+            businessDays: [1, 2, 3, 4, 5, 6],
+            setupComplete: true,
+            setupBy: uid,
+            setupAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    }
+
+    // 7. Crear zonas por defecto
+    const zonesSnapshot = await db.collection('zones').limit(1).get();
+    if (zonesSnapshot.empty) {
+        const defaultZones = [
+            { name: 'Microcentro', basePrice: 80, pricePerHour: 120 },
+            { name: 'Centro', basePrice: 60, pricePerHour: 100 },
+            { name: 'Terminal', basePrice: 50, pricePerHour: 80 },
+            { name: 'Hospital', basePrice: 40, pricePerHour: 70 },
+            { name: 'Costanera', basePrice: 30, pricePerHour: 60 },
+        ];
+        const batch = db.batch();
+        for (const zone of defaultZones) {
+            const zoneRef = db.collection('zones').doc();
+            batch.set(zoneRef, zone);
+        }
+        await batch.commit();
+    }
+
+    return {
+        success: true,
+        message: `${email} es ahora admin. Sistema inicializado.`,
+        uid,
+    };
+});
+
 export * from './macro-click';

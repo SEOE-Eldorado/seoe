@@ -15,7 +15,7 @@ export const userSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   balance: z.number().default(0),
   autoPayFines: z.boolean().default(false),
-  role: z.enum(["user", "inspector", "admin"]).default("user"),
+  role: z.enum(["user", "seller", "inspector", "admin"]).default("user"),
   permissions: z.array(z.string()).optional(),
   preferences: z.object({
     pushEnabled: z.boolean().default(true),

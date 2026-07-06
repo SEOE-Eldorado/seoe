@@ -26,6 +26,10 @@ service cloud.firestore {
       return isAuth() && (getUserData().role == 'inspector' || getUserData().role == 'admin');
     }
 
+    function isSeller() {
+      return isAuth() && (getUserData().role == 'seller' || getUserData().role == 'admin');
+    }
+
     function isIn(uid, list) {
       return uid in list;
     }
@@ -61,7 +65,7 @@ service cloud.firestore {
     // USERS
     // ============================================
     match /users/{userId} {
-      allow read: if isOwner(userId) || isInspector();
+      allow read: if isOwner(userId) || isInspector() || isSeller();
       allow create: if request.auth.uid == userId
         && request.resource.data.keys().hasAll(['name', 'email'])
         && request.resource.data.name is string
@@ -70,7 +74,7 @@ service cloud.firestore {
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance'])
             || isAdmin());
       allow delete: if isAdmin();
-      allow list: if isInspector();
+      allow list: if isInspector() || isSeller();
     }
 
     // ============================================
@@ -102,7 +106,7 @@ service cloud.firestore {
     // VEHICLES
     // ============================================
     match /vehicles/{vehicleId} {
-      allow read: if isOwner(resource.data.userId) || isInspector();
+      allow read: if isOwner(resource.data.userId) || isInspector() || isSeller();
       allow create: if isAuth()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.keys().hasAll(['licensePlate', 'userId'])
@@ -116,13 +120,21 @@ service cloud.firestore {
     // PARKING SESSIONS
     // ============================================
     match /parking_sessions/{sessionId} {
-      allow read: if isOwner(resource.data.userId) || isInspector();
+      allow read: if isOwner(resource.data.userId) || isInspector() || isSeller();
       allow create: if isAuth()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasAll(['userId', 'zone', 'startTime', 'endTime', 'status'])
-        && request.resource.data.status == 'active'
-        && request.resource.data.startTime is timestamp
-        && request.resource.data.endTime is timestamp;
+        && (
+          // Owner creates for themselves
+          (request.resource.data.userId == request.auth.uid
+            && request.resource.data.keys().hasAll(['userId', 'zone', 'startTime', 'endTime', 'status'])
+            && request.resource.data.status == 'active'
+            && request.resource.data.startTime is timestamp
+            && request.resource.data.endTime is timestamp)
+          ||
+          // Seller creates for any user (server-side validated)
+          (isSeller()
+            && request.resource.data.keys().hasAll(['userId', 'zone', 'startTime', 'endTime', 'status', 'vehiclePlate'])
+            && request.resource.data.status == 'active')
+        );
       allow update: if isOwner(resource.data.userId) || isInspector()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endTime', 'status', 'cost', 'extendedAt']);
       allow delete: if false; // Never delete parking sessions
@@ -199,6 +211,16 @@ service cloud.firestore {
       allow create: if isInspector()
         && request.resource.data.keys().hasAll(['inspectorId', 'type', 'timestamp'])
         && request.resource.data.inspectorId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ============================================
+    // SELLER TRANSACTIONS
+    // ============================================
+    match /seller_transactions/{txId} {
+      allow read: if isSeller() || isAdmin();
+      allow create: if isSeller() || isAdmin();
+      allow update: if isAdmin();
       allow delete: if false;
     }
 

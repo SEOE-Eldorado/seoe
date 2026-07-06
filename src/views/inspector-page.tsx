@@ -35,7 +35,8 @@ import {
     WifiOff,
     Activity,
     RefreshCw,
-    Key
+    Key,
+    Store
 } from "lucide-react"
 import { useEffect } from "react"
 
@@ -54,6 +55,7 @@ const AuditLogsPanel = dynamic(() => import("@widgets/admin/audit-logs-panel").t
 const PaymentGatewayCenter = dynamic(() => import("@widgets/admin/payment-gateway-center").then(m => ({ default: m.PaymentGatewayCenter })), { ssr: false })
 const ExemptionsManagement = dynamic(() => import("@widgets/admin/exemptions-management").then(m => ({ default: m.ExemptionsManagement })), { ssr: false })
 const AdminRolesManager = dynamic(() => import("@widgets/admin/admin-roles-manager").then(m => ({ default: m.AdminRolesManager })), { ssr: false })
+const SellerManagement = dynamic(() => import("@widgets/admin/seller-management").then(m => ({ default: m.SellerManagement })), { ssr: false })
 const InspectorHeatmap = dynamic(() => import("@widgets/inspector-heatmap").then(m => ({ default: m.InspectorHeatmap })), { ssr: false })
 
 const SidebarItem = ({ active, icon, label, onClick, badge, collapsed }: any) => {
@@ -89,7 +91,7 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [isOffline, setIsOffline] = useState(false)
     const [pendingSync, setPendingSync] = useState(0)
-    const [activeTab, setActiveTab] = useState<"control" | "heatmap" | "history" | "config" | "zones" | "dashboard" | "users" | "fines" | "special-days" | "inspectors" | "reports" | "notifications" | "audit" | "payments" | "exemptions" | "roles">(isAdmin ? "dashboard" : "control")
+    const [activeTab, setActiveTab] = useState<"control" | "heatmap" | "history" | "config" | "zones" | "dashboard" | "users" | "fines" | "special-days" | "inspectors" | "reports" | "notifications" | "audit" | "payments" | "exemptions" | "roles" | "sellers">(isAdmin ? "dashboard" : "control")
 
     useEffect(() => {
         const handleOnline = () => {
@@ -146,6 +148,7 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
         "config": "Tarifas y Precios",
         "history": "Historial de Operaciones",
         "roles": "Roles y Accesos Dinámicos",
+        "sellers": "Gestión de Vendedores",
     }
 
     const hasPermission = (tabId: string) => {
@@ -227,6 +230,7 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
                                     {hasPermission('fines') && <SidebarItem collapsed={isCollapsed} active={activeTab === 'fines'} icon={<FileText />} label="Sistema Multas" onClick={() => setActiveTab('fines')} />}
                                     {hasPermission('zones') && <SidebarItem collapsed={isCollapsed} active={activeTab === 'zones'} icon={<MapPin />} label="Zonas y Mapas" onClick={() => setActiveTab('zones')} />}
                                     {hasPermission('payments') && <SidebarItem collapsed={isCollapsed} active={activeTab === 'payments'} icon={<Wallet />} label="Pagos y Créditos" onClick={() => setActiveTab('payments')} />}
+                                    {hasPermission('sellers') && <SidebarItem collapsed={isCollapsed} active={activeTab === 'sellers'} icon={<Store className="size-4" />} label="Vendedores" onClick={() => setActiveTab('sellers')} />}
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -333,6 +337,8 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
                             {activeTab === "payments" && hasPermission('payments') && <PaymentGatewayCenter />}
 
                             {activeTab === "roles" && (!user?.permissions || user.permissions.length === 0) && <AdminRolesManager />}
+
+                            {activeTab === "sellers" && hasPermission('sellers') && <SellerManagement />}
 
                             {activeTab === "fines" && hasPermission('fines') && <FinesManagement />}
 

@@ -18,6 +18,7 @@ RUN \
 
 # 2. Rebuild the source code only when needed
 FROM base AS builder
+ARG BUILD_MODE
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -29,8 +30,14 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
+  if [ -f yarn.lock ]; then \
+    if [ "$BUILD_MODE" = "seller" ]; then yarn run build:seller; \
+    elif [ "$BUILD_MODE" = "inspector" ]; then yarn run build:mobile; \
+    else yarn run build; fi; \
+  elif [ -f package-lock.json ]; then \
+    if [ "$BUILD_MODE" = "seller" ]; then npm run build:seller; \
+    elif [ "$BUILD_MODE" = "inspector" ]; then npm run build:mobile; \
+    else npm run build; fi; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
   else echo "Lockfile not found." && exit 1; \
   fi

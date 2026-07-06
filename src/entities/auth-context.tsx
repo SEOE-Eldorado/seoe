@@ -24,7 +24,7 @@ interface User {
   phone: string
   balance: number
   autoPayFines: boolean
-  role: "user" | "inspector" | "admin"
+  role: "user" | "seller" | "inspector" | "admin"
   permissions?: string[]
   preferences?: {
     pushEnabled: boolean
