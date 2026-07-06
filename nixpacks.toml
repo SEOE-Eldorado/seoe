@@ -5,7 +5,9 @@ nixPkgs = ["nodejs_22", "npm-10_x"]
 commands = ["npm ci"]
 
 [phases.build]
-commands = ["npm run build"]
+commands = [
+  "if [ -n \"$NEXT_PUBLIC_APP_ENV\" ] && [ \"$NEXT_PUBLIC_APP_ENV\" = \"seller\" ]; then npm run build:seller; elif [ -n \"$NEXT_PUBLIC_APP_ENV\" ] && [ \"$NEXT_PUBLIC_APP_ENV\" = \"inspector\" ]; then npm run build:inspector; else npm run build; fi"
+]
 
 [start]
 cmd = "npm run start"
