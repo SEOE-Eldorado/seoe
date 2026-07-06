@@ -6,7 +6,7 @@ commands = ["npm ci"]
 
 [phases.build]
 commands = [
-  "if [ \"$BUILD_MODE\" = \"seller\" ]; then npm run build:seller; elif [ \"$BUILD_MODE\" = \"inspector\" ]; then npm run build:inspector; else npm run build; fi"
+  "if [ \"$NEXT_PUBLIC_APP_ENV\" = \"seller\" ]; then npm run build:seller; elif [ \"$NEXT_PUBLIC_APP_ENV\" = \"inspector\" ]; then npm run build:inspector; else npm run build; fi"
 ]
 
 [start]
