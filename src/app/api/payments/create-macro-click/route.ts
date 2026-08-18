@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { adminAuth, adminDb } from "@shared/api/firebase-admin";
+// @ts-ignore - pluspagos-aes-encryption lacks type declarations
 import { encryptString } from "pluspagos-aes-encryption";
 
 const MACRO_CLICK_COMMERCE_ID = "303b9879-0ac6-49ae-802a-b665c696725b";

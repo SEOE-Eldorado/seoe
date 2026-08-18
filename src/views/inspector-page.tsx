@@ -47,6 +47,7 @@ const ZoneManagement = dynamic(() => import("@widgets/admin/zone-management").th
 const StatsDashboard = dynamic(() => import("@widgets/admin/stats-dashboard").then(m => ({ default: m.StatsDashboard })), { ssr: false })
 const UsersManagement = dynamic(() => import("@widgets/admin/users-management").then(m => ({ default: m.UsersManagement })), { ssr: false })
 const FinesManagement = dynamic(() => import("@widgets/admin/fines-management").then(m => ({ default: m.FinesManagement })), { ssr: false })
+const InspectorMyFines = dynamic(() => import("@widgets/inspector-my-fines").then(m => ({ default: m.InspectorMyFines })), { ssr: false })
 const SpecialDaysManagement = dynamic(() => import("@widgets/admin/special-days-management").then(m => ({ default: m.SpecialDaysManagement })), { ssr: false })
 const InspectorManagement = dynamic(() => import("@widgets/admin/inspector-management").then(m => ({ default: m.InspectorManagement })), { ssr: false })
 const ReportsPanel = dynamic(() => import("@widgets/admin/reports-panel").then(m => ({ default: m.ReportsPanel })), { ssr: false })
@@ -91,7 +92,7 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [isOffline, setIsOffline] = useState(false)
     const [pendingSync, setPendingSync] = useState(0)
-    const [activeTab, setActiveTab] = useState<"control" | "heatmap" | "history" | "config" | "zones" | "dashboard" | "users" | "fines" | "special-days" | "inspectors" | "reports" | "notifications" | "audit" | "payments" | "exemptions" | "roles" | "sellers">(isAdmin ? "dashboard" : "control")
+    const [activeTab, setActiveTab] = useState<"control" | "heatmap" | "history" | "my-fines" | "config" | "zones" | "dashboard" | "users" | "fines" | "special-days" | "inspectors" | "reports" | "notifications" | "audit" | "payments" | "exemptions" | "roles" | "sellers">(isAdmin ? "dashboard" : "control")
 
     useEffect(() => {
         const handleOnline = () => {
@@ -217,6 +218,7 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
                             {isAdmin && <SidebarItem collapsed={isCollapsed} active={activeTab === 'dashboard'} icon={<LayoutDashboard />} label="Dashboard" onClick={() => setActiveTab('dashboard')} />}
                             <SidebarItem collapsed={isCollapsed} active={activeTab === 'control'} icon={<ShieldCheck />} label="Control Fiscal" onClick={() => { setActiveTab('control'); resetSearch(); }} />
                             <SidebarItem collapsed={isCollapsed} active={activeTab === 'heatmap'} icon={<Activity />} label="Mapa de Calor" onClick={() => setActiveTab('heatmap')} />
+                            {!isAdmin && <SidebarItem collapsed={isCollapsed} active={activeTab === 'my-fines'} icon={<FileText />} label="Mis Multas" onClick={() => setActiveTab('my-fines')} />}
                             <SidebarItem collapsed={isCollapsed} active={activeTab === 'history'} icon={<HistoryIcon />} label="Historial" onClick={() => setActiveTab('history')} />
                         </div>
 
@@ -345,6 +347,8 @@ export function InspectorPage({ onBack }: { onBack: () => void }) {
                             {activeTab === "special-days" && hasPermission('special-days') && <SpecialDaysManagement />}
 
                             {activeTab === "heatmap" && <InspectorHeatmap />}
+
+                            {activeTab === "my-fines" && <InspectorMyFines />}
 
                             {activeTab === "control" && (
                                 <>

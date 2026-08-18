@@ -78,13 +78,21 @@ describe('ZoneManagement (Admin Widget)', () => {
     vi.clearAllMocks()
 
     vi.mocked(useSettings).mockReturnValue({
+      settings: null,
       zones: [
         { id: 'zone-1', name: 'Microcentro', description: 'Área central', active: true, center: { lat: -34.6037, lng: -58.3816 }, radius: 500 },
         { id: 'zone-2', name: 'Palermo', description: 'Zona norte', active: false, center: { lat: -34.58, lng: -58.42 }, radius: 800 },
       ],
+      specialDays: [],
+      updateSettings: vi.fn(),
       addZone: vi.fn(),
       updateZone: vi.fn(),
       deleteZone: vi.fn(),
+      isOperatingTime: vi.fn(() => true),
+      isLocationInAnyZone: vi.fn(() => false),
+      getZoneAtLocation: vi.fn(() => null),
+      calculateCost: vi.fn(() => 0),
+      loading: false,
     })
   })
 

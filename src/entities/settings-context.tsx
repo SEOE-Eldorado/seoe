@@ -11,6 +11,17 @@ export interface SystemSettings {
         tier2: number // 3ra y 4ta media hora
         tier3: number // 5ta en adelante
     }
+    /**
+     * Tarifas diferenciadas por día (opcional).
+     * Si está presente, se usa la tarifa del día correspondiente.
+     * Si NO está presente, se usa `rates` para todos los días (retrocompat).
+     */
+    ratesByDay?: {
+        weekday?: { tier1: number; tier2: number; tier3: number } // lun-vie
+        saturday?: { tier1: number; tier2: number; tier3: number }
+        sunday?: { tier1: number; tier2: number; tier3: number }
+        holiday?: { tier1: number; tier2: number; tier3: number }
+    } | null
     operatingHours: {
         morning: { start: string; end: string }
         afternoon: { start: string; end: string }
@@ -25,6 +36,15 @@ export interface SystemSettings {
             bonusPercentage: number
         }
     }
+    /**
+     * Montos configurables de multas. Si NO está presente, el FineIssuer
+     * usa los valores por defecto hardcoded (retrocompat).
+     */
+    fineAmounts?: {
+        no_payment?: number
+        expired_meter?: number
+        wrong_zone?: number
+    } | null
 }
 
 export interface Zone {
@@ -34,6 +54,15 @@ export interface Zone {
     active: boolean
     center: { lat: number; lng: number }
     radius: number // in meters
+    /**
+     * Tarifa específica de esta zona. Si está presente, override la global.
+     * Si es null/undefined, se usa settings.rates (global).
+     */
+    tariff?: {
+        tier1: number
+        tier2: number
+        tier3: number
+    } | null
 }
 
 export interface SpecialDay {
@@ -242,6 +271,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }) || null;
     }
 
+    /**
+     * Devuelve las tarifas aplicables para un stepTime dado.
+     * Prioridad:
+     *   1. Tarifa específica de la zona (si el step cae en una zona con tariff)
+     *   2. Tarifa por día (si ratesByDay está configurado y tiene el día)
+     *   3. Tarifa global
+     */
+    const getRatesForStep = (stepTime: Date, zone: Zone | null) => {
+        if (zone && zone.tariff) return zone.tariff
+        if (settings?.ratesByDay) {
+            const isoDate = `${stepTime.getFullYear()}-${String(stepTime.getMonth() + 1).padStart(2, '0')}-${String(stepTime.getDate()).padStart(2, '0')}`
+            const isHoliday = specialDays.find(d => d.date === isoDate && d.type === 'holiday')
+            const dow = stepTime.getDay() // 0=Dom, 6=Sáb
+            if (isHoliday && settings.ratesByDay.holiday) return settings.ratesByDay.holiday
+            if (dow === 0 && settings.ratesByDay.sunday) return settings.ratesByDay.sunday
+            if (dow === 6 && settings.ratesByDay.saturday) return settings.ratesByDay.saturday
+            if (dow >= 1 && dow <= 5 && settings.ratesByDay.weekday) return settings.ratesByDay.weekday
+        }
+        return settings!.rates
+    }
+
     const calculateCost = (hours: number, startHours: number = 0, lat?: number, lng?: number): number => {
         if (!settings || !settings.rates) return 0
 
@@ -254,18 +304,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const startTime = new Date()
         startTime.setMinutes(startTime.getMinutes() + (startHours * 60))
 
+        // Determinar zona (si hay lat/lng)
+        const zone = (lat !== undefined && lng !== undefined) ? getZoneAtLocation(lat, lng) : null
+
         const totalSteps = hours * 2
         for (let i = 0; i < totalSteps; i++) {
             const stepTime = new Date(startTime.getTime() + (i * 30 * 60 * 1000))
 
             if (isOperatingTime(stepTime)) {
                 effectiveHalfHours++
+                const rates = getRatesForStep(stepTime, zone)
                 if (effectiveHalfHours <= 2) {
-                    total += settings.rates.tier1
+                    total += rates.tier1
                 } else if (effectiveHalfHours <= 4) {
-                    total += settings.rates.tier2
+                    total += rates.tier2
                 } else {
-                    total += settings.rates.tier3
+                    total += rates.tier3
                 }
             }
         }

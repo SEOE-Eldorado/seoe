@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { useFines } from "@entities/fines-context"
 import { useAuth } from "@entities/auth-context"
+import { useSettings } from "@entities/settings-context"
 import { Button } from "@shared/ui/atoms/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@shared/ui/atoms/card"
 import { Label } from "@shared/ui/atoms/label"
@@ -16,10 +17,11 @@ interface FineIssuerProps {
     onCancel: () => void
 }
 
-const FINE_TYPES = [
-    { id: "no_payment", label: "Sin Estacionamiento", amount: 12000, description: "Vehículo estacionado sin sesión activa." },
-    { id: "expired_meter", label: "Tiempo Expirado", amount: 8000, description: "La sesión de estacionamiento ha caducado." },
-    { id: "wrong_zone", label: "Zona Incorrecta", amount: 10000, description: "Estacionado en una zona no habilitada o diferente." },
+// Montos por defecto — usados si el admin no configuró `settings.fineAmounts`
+const DEFAULT_FINE_TYPES = [
+    { id: "no_payment", label: "Sin Estacionamiento", description: "Vehículo estacionado sin sesión activa." },
+    { id: "expired_meter", label: "Tiempo Expirado", description: "La sesión de estacionamiento ha caducado." },
+    { id: "wrong_zone", label: "Zona Incorrecta", description: "Estacionado en una zona no habilitada o diferente." },
 ]
 
 // Generate a short unique acta number
@@ -34,6 +36,20 @@ function generateActaNumber(inspectorId?: string): string {
 export function FineIssuer({ plate, onSuccess, onCancel }: FineIssuerProps) {
     const { issueFine } = useFines()
     const { user } = useAuth()
+    const { settings } = useSettings()
+
+    // Montos configurables desde el admin (con fallback a defaults)
+    const fineAmounts = {
+        no_payment: settings?.fineAmounts?.no_payment ?? 12000,
+        expired_meter: settings?.fineAmounts?.expired_meter ?? 8000,
+        wrong_zone: settings?.fineAmounts?.wrong_zone ?? 10000,
+    }
+    const FINE_TYPES = [
+        { id: "no_payment", label: "Sin Estacionamiento", amount: fineAmounts.no_payment, description: "Vehículo estacionado sin sesión activa." },
+        { id: "expired_meter", label: "Tiempo Expirado", amount: fineAmounts.expired_meter, description: "La sesión de estacionamiento ha caducado." },
+        { id: "wrong_zone", label: "Zona Incorrecta", amount: fineAmounts.wrong_zone, description: "Estacionado en una zona no habilitada o diferente." },
+    ]
+
     const [selectedType, setSelectedType] = useState(FINE_TYPES[0].id)
     const [loading, setLoading] = useState(false)
     const [step, setStep] = useState<"form" | "confirm" | "success">("form")

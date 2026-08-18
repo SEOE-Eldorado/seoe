@@ -23,7 +23,8 @@ import {
     Check,
     MapPinOff,
     Maximize2,
-    ArrowLeft
+    ArrowLeft,
+    DollarSign
 } from "lucide-react"
 
 export function ZoneManagement() {
@@ -42,6 +43,11 @@ export function ZoneManagement() {
     const [lat, setLat] = useState("-34.6037")
     const [lng, setLng] = useState("-58.3816")
     const [radius, setRadius] = useState("500")
+    // Tarifa específica de la zona (opcional — si está vacía usa la global)
+    const [useZoneTariff, setUseZoneTariff] = useState(false)
+    const [tariffTier1, setTariffTier1] = useState("")
+    const [tariffTier2, setTariffTier2] = useState("")
+    const [tariffTier3, setTariffTier3] = useState("")
 
     const handleShowForm = (zone?: Zone) => {
         if (zone) {
@@ -52,6 +58,18 @@ export function ZoneManagement() {
             setLat(zone.center.lat.toString())
             setLng(zone.center.lng.toString())
             setRadius(zone.radius.toString())
+            // Cargar tariff si existe
+            if (zone.tariff) {
+                setUseZoneTariff(true)
+                setTariffTier1(zone.tariff.tier1.toString())
+                setTariffTier2(zone.tariff.tier2.toString())
+                setTariffTier3(zone.tariff.tier3.toString())
+            } else {
+                setUseZoneTariff(false)
+                setTariffTier1("")
+                setTariffTier2("")
+                setTariffTier3("")
+            }
         } else {
             setEditingZone(null)
             setName("")
@@ -60,6 +78,10 @@ export function ZoneManagement() {
             setLat("-34.6037")
             setLng("-58.3816")
             setRadius("500")
+            setUseZoneTariff(false)
+            setTariffTier1("")
+            setTariffTier2("")
+            setTariffTier3("")
         }
         setView("form")
     }
@@ -67,12 +89,24 @@ export function ZoneManagement() {
     const handleSave = async () => {
         setLoading(true)
         try {
-            const zoneData = {
+            const zoneData: Omit<Zone, "id"> = {
                 name,
                 description,
                 active,
                 center: { lat: parseFloat(lat), lng: parseFloat(lng) },
-                radius: parseInt(radius)
+                radius: parseInt(radius),
+            }
+
+            // Agregar tariff solo si está activado y los 3 tiers son válidos
+            if (useZoneTariff && tariffTier1 && tariffTier2 && tariffTier3) {
+                zoneData.tariff = {
+                    tier1: parseFloat(tariffTier1),
+                    tier2: parseFloat(tariffTier2),
+                    tier3: parseFloat(tariffTier3),
+                }
+            } else {
+                // Explícitamente null = usar tarifa global
+                zoneData.tariff = null
             }
 
             if (editingZone) {
@@ -192,6 +226,60 @@ export function ZoneManagement() {
                                         </div>
                                     </div>
                                     <Switch checked={active} onCheckedChange={setActive} />
+                                </div>
+
+                                {/* Tarifa específica de la zona */}
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Tarifa Específica</Label>
+                                            <span className="text-[9px] font-bold text-slate-400 tracking-tight">Si está activa, override la tarifa global</span>
+                                        </div>
+                                        <Switch checked={useZoneTariff} onCheckedChange={setUseZoneTariff} />
+                                    </div>
+                                    {useZoneTariff && (
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="space-y-1.5 p-3 rounded-[1.25px] bg-white border border-slate-200">
+                                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">1ra-2da 30min</span>
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 font-black">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={tariffTier1}
+                                                        onChange={(e) => setTariffTier1(e.target.value)}
+                                                        placeholder="50"
+                                                        className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-md text-sm font-black outline-none focus:ring-1 focus:ring-slate-900"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 p-3 rounded-[1.25px] bg-white border border-slate-200">
+                                                <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">3ra-4ta 30min</span>
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 font-black">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={tariffTier2}
+                                                        onChange={(e) => setTariffTier2(e.target.value)}
+                                                        placeholder="85"
+                                                        className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-md text-sm font-black outline-none focus:ring-1 focus:ring-slate-900"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 p-3 rounded-[1.25px] bg-white border border-slate-200">
+                                                <span className="text-[9px] font-black text-violet-600 uppercase tracking-widest">5ta en adelante</span>
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 font-black">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={tariffTier3}
+                                                        onChange={(e) => setTariffTier3(e.target.value)}
+                                                        placeholder="130"
+                                                        className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-100 rounded-md text-sm font-black outline-none focus:ring-1 focus:ring-slate-900"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -336,14 +424,28 @@ export function ZoneManagement() {
                             </div>
                         </div>
 
-                        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Cobertura</span>
-                                <span className="text-xs font-bold text-slate-700 mt-1">{zone.radius} metros</span>
+                        <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Cobertura</span>
+                                    <span className="text-xs font-bold text-slate-700 mt-1">{zone.radius} metros</span>
+                                </div>
+                                <Badge className={`${zone.active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"} border-none text-[9px] font-black uppercase px-2 py-0.5 tracking-wider rounded-[0.75px]`}>
+                                    {zone.active ? "Activa" : "Pausada"}
+                                </Badge>
                             </div>
-                            <Badge className={`${zone.active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"} border-none text-[9px] font-black uppercase px-2 py-0.5 tracking-wider rounded-[0.75px]`}>
-                                {zone.active ? "Activa" : "Pausada"}
-                            </Badge>
+                            {zone.tariff ? (
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 border border-amber-100">
+                                    <DollarSign className="size-3 text-amber-600" />
+                                    <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">Tarifa propia</span>
+                                    <span className="text-[10px] font-bold text-amber-900">${zone.tariff.tier1}/${zone.tariff.tier2}/${zone.tariff.tier3}</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-100">
+                                    <DollarSign className="size-3 text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Tarifa global</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
