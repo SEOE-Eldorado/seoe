@@ -14,20 +14,32 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    /**
+     * Lee el rol desde CUSTOM CLAIMS del token (más seguro que leer
+     * el documento users/{uid}, que puede tener race conditions).
+     *
+     * Los custom claims se asignan via:
+     *   firebase auth:export-users
+     *   admin.auth().setCustomUserClaims(uid, { role: 'admin' })
+     *
+     * Ver scripts/create-first-admin.mjs
+     */
+    function userRole() {
+      return isAuth() && request.auth.token.role != null
+        ? request.auth.token.role
+        : '';
     }
 
     function isAdmin() {
-      return isAuth() && getUserData().role == 'admin';
+      return userRole() == 'admin';
     }
 
     function isInspector() {
-      return isAuth() && (getUserData().role == 'inspector' || getUserData().role == 'admin');
+      return userRole() == 'inspector' || isAdmin();
     }
 
     function isSeller() {
-      return isAuth() && (getUserData().role == 'seller' || getUserData().role == 'admin');
+      return userRole() == 'seller' || isAdmin();
     }
 
     function isIn(uid, list) {
@@ -55,24 +67,29 @@ service cloud.firestore {
       return val is timestamp;
     }
 
-    // Rate limit: max N writes per minute per user
-    function checkRate(limit) {
-      let recent = get(/databases/$(database)/documents/_rate/$(request.auth.uid)).data;
-      return recent == null || recent.count < limit;
-    }
-
     // ============================================
     // USERS
     // ============================================
     match /users/{userId} {
+      // Lectura: owner + inspectors + sellers (para verificar DNI al cobrar)
       allow read: if isOwner(userId) || isInspector() || isSeller();
+
+      // Crear: solo el propio usuario, con campos mínimos requeridos
       allow create: if request.auth.uid == userId
         && request.resource.data.keys().hasAll(['name', 'email'])
         && request.resource.data.name is string
         && request.resource.data.email is string;
-      allow update: if isOwner(userId) || isAdmin()
-        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance'])
-            || isAdmin());
+
+      // Update: el owner puede modificar SU perfil EXCEPTO role y balance
+      //          el admin puede modificar todo (incluyendo role/balance de otros)
+      // FIX bug 0.6: la precedence original `isOwner(userId) || isAdmin() && (...)`
+      //                era ambigua y permitía al owner mutar role/balance. Ahora:
+      //                  - owner: puede modificar todo MENOS role/balance
+      //                  - admin: puede modificar todo
+      allow update: if isAdmin()
+        || (isOwner(userId)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance']));
+
       allow delete: if isAdmin();
       allow list: if isInspector() || isSeller();
     }
@@ -87,19 +104,23 @@ service cloud.firestore {
 
     match /zones/{zoneId} {
       allow read: if true;
+      // FIX bug 0.6: requisitos actualizados para coincidir con Zone interface
+      //   (id, name, active, center, radius, description, tariff opcional)
       allow write: if isAdmin()
-        && request.resource.data.keys().hasAll(['name', 'basePrice', 'pricePerHour'])
+        && request.resource.data.keys().hasAll(['name', 'center', 'radius', 'active'])
         && request.resource.data.name is string
-        && request.resource.data.basePrice is number
-        && request.resource.data.pricePerHour is number;
+        && request.resource.data.center.lat is number
+        && request.resource.data.center.lng is number
+        && request.resource.data.radius is number
+        && request.resource.data.active is bool;
     }
 
     match /special_days/{dayId} {
       allow read: if true;
       allow write: if isAdmin()
-        && request.resource.data.keys().hasAll(['date', 'rate'])
+        && request.resource.data.keys().hasAll(['date', 'type', 'name'])
         && request.resource.data.date is string
-        && request.resource.data.rate is number;
+        && request.resource.data.type is string;
     }
 
     // ============================================
@@ -146,14 +167,24 @@ service cloud.firestore {
     match /fines/{fineId} {
       allow read: if isOwner(resource.data.userId) || isInspector();
       allow create: if isInspector()
-        && request.resource.data.keys().hasAll(['userId', 'vehiclePlate', 'amount', 'status', 'zone'])
+        && request.resource.data.keys().hasAll(['userId', 'vehiclePlate', 'amount', 'status', 'zone', 'type', 'inspectorId'])
         && request.resource.data.amount is number
         && request.resource.data.vehiclePlate is string
-        && request.resource.data.status == 'pending';
-      allow update: if isOwner(resource.data.userId)  // User pays
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt'])
-        || isInspector()                              // Inspector adjusts
-        || isAdmin();
+        && request.resource.data.status == 'pending'
+        && request.resource.data.inspectorId == request.auth.uid;
+      // FIX bug 0.6: agrupamiento correcto con paréntesis.
+      //                Original era ambiguo: `isOwner || isInspector || isAdmin`
+      //                pero el orden de || y && sin paréntesis causa bugs.
+      //                Ahora es explícito:
+      //                  - owner puede cambiar solo status/paidAt (pagar)
+      //                  - inspector puede cambiar más campos (ajustar multa)
+      //                  - admin puede cambiar todo
+      allow update: if isAdmin()
+        || (isOwner(resource.data.userId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt']))
+        || (isInspector()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'paidAt', 'amount', 'description', 'cancelledAt']));
       allow delete: if isAdmin();
     }
 
@@ -162,15 +193,20 @@ service cloud.firestore {
     // ============================================
     match /transactions/{transactionId} {
       allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow create: if isOwner(request.resource.data.userId)
-        && request.resource.data.keys().hasAll(['userId', 'type', 'amount']);
-      allow update: if isAdmin(); // Only system marks completed/refunded
+      // FIX bug 0.6: solo server puede crear (vía Cloud Function / API route)
+      //                Original permitía al user crear con cualquier userId, riesgo
+      //                de fraude (crear transactions con amount positivo).
+      allow create: if isAdmin();
+      allow update: if isAdmin();
       allow delete: if false;
     }
 
     match /payments/{paymentId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin() || resource.data.userId == null; // Guest payments are public-read
-      allow create: if isAuth() || resource.data.userId == null; // Guest payments can be created server-side
+      // FIX bug 0.6: payments se pueden leer solo por owner o admin.
+      //                Guest payments: el owner es null, no se permite lectura pública.
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      // Solo server puede crear (vía webhook Macro Click)
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -202,7 +238,8 @@ service cloud.firestore {
     // ============================================
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if true; // Can be created by system functions
+      // FIX bug 0.6: solo server puede crear audit logs (no se aceptan del cliente)
+      allow create: if isAdmin();
       allow delete: if false;
     }
 
@@ -225,10 +262,11 @@ service cloud.firestore {
     }
 
     // ============================================
-    // ADMIN FALLBACK
+    // ⚠️ REMOVED: ADMIN WILDCARD
     // ============================================
-    match /{document=**} {
-      allow read, write: if isAdmin();
-    }
+    // Antes había un `match /{document=**} { allow read, write: if isAdmin(); }`
+    // que exponía TODA la base de datos a cualquier token admin comprometido.
+    // Fue removido en la fix 0.6. Si necesitás acceso a una nueva colección
+    // desde el admin, agregá una regla EXPLÍCITA para esa colección.
   }
 }
